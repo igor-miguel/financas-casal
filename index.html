@@ -165,8 +165,22 @@ svg.chart { display: block; }
 .catbar-value { flex: 0 0 auto; font-size: .8rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .catbar-track { flex: 1 1 100%; order: 3; height: 10px; border-radius: 5px; background: var(--grid); overflow: hidden; }
 .catbar-fill { height: 100%; border-radius: 5px; }
-.catbar-total { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.catbar-total { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; flex-wrap: wrap; gap: 4px; }
 .catbar-total .valor { font-size: 1.25rem; font-weight: 700; }
+
+.periodo-pills { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.periodo-pills button {
+  border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
+  padding: 5px 12px; border-radius: 999px; font-size: .8rem; cursor: pointer;
+}
+.periodo-pills button.active { background: var(--accent); color: white; border-color: var(--accent); }
+.periodo-custom { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.periodo-custom > div { flex: 1 1 140px; }
+.periodo-custom label { font-size: .78rem; color: var(--text-secondary); display: block; margin-bottom: 3px; }
+.periodo-custom input {
+  width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--field-bg); color: var(--text-primary); font-size: .95rem;
+}
 
 /* ---- blocos de categoria ---- */
 .categorias-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
@@ -300,8 +314,24 @@ form.form-grid button { grid-column: 1 / -1; }
         <div class="section-title">
           <h2>Gastos por categoria</h2>
         </div>
+        <div class="periodo-pills" id="periodo-pills">
+          <button data-periodo="mensal" class="active">Mensal</button>
+          <button data-periodo="trimestral">Trimestral</button>
+          <button data-periodo="anual">Anual</button>
+          <button data-periodo="personalizado">Personalizado</button>
+        </div>
+        <div class="periodo-custom" id="periodo-custom" style="display:none;">
+          <div>
+            <label>De</label>
+            <input type="month" id="periodo-de">
+          </div>
+          <div>
+            <label>Até</label>
+            <input type="month" id="periodo-ate">
+          </div>
+        </div>
         <div class="catbar-total">
-          <span class="muted">Total de saídas no mês</span>
+          <span class="muted" id="catbar-periodo-label">Total de saídas no mês</span>
           <span class="valor" id="catbar-total-valor"></span>
         </div>
         <div class="catbar-list" id="catbar-list"></div>
@@ -479,6 +509,7 @@ let historico = [];
 let mesAtual = primeiroDiaMes(new Date());
 let lancamentosMes = [];
 let reservaAcumulada = 0;
+let periodoTipo = 'mensal';
 
 function primeiroDiaMes(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
 function fmtMesRef(d) { return d.toISOString().slice(0,10); }
@@ -598,7 +629,7 @@ async function carregarMes() {
   // lancs (bruto, com os "removido") só serve pra idsFixasNoMes acima, não pra exibir/somar
   lancamentosMes = lancs.filter(l => l.status !== 'removido');
   renderTiles();
-  renderCategoriasBar();
+  await carregarCategoriasBar();
   renderContas();
   renderEntradas();
   renderDicas();
@@ -796,10 +827,55 @@ function renderResumoRetro(itens, elId) {
   `;
 }
 
-function renderCategoriasBar() {
-  const saidas = lancamentosMes.filter(l => l.tipo === 'saida');
+function calcularRangePeriodo() {
+  const ano = mesAtual.getFullYear();
+  const mes = mesAtual.getMonth();
+  if (periodoTipo === 'trimestral') {
+    const qStart = Math.floor(mes / 3) * 3;
+    return { inicio: fmtMesRef(new Date(ano, qStart, 1)), fim: fmtMesRef(new Date(ano, qStart + 2, 1)) };
+  }
+  if (periodoTipo === 'anual') {
+    return { inicio: fmtMesRef(new Date(ano, 0, 1)), fim: fmtMesRef(new Date(ano, 11, 1)) };
+  }
+  if (periodoTipo === 'personalizado') {
+    let de = document.getElementById('periodo-de').value || fmtMesRef(mesAtual).slice(0, 7);
+    let ate = document.getElementById('periodo-ate').value || fmtMesRef(mesAtual).slice(0, 7);
+    if (ate < de) { const tmp = de; de = ate; ate = tmp; }
+    return { inicio: de + '-01', fim: ate + '-01' };
+  }
+  return { inicio: fmtMesRef(mesAtual), fim: fmtMesRef(mesAtual) };
+}
+
+function fmtPeriodoLabel(tipo, inicio, fim) {
+  const anoInicio = inicio.slice(0, 4);
+  if (tipo === 'anual') return `Total de saídas em ${anoInicio}`;
+  if (tipo === 'trimestral') {
+    const q = Math.floor(new Date(inicio + 'T00:00:00').getMonth() / 3) + 1;
+    return `Total de saídas no ${q}º trimestre de ${anoInicio}`;
+  }
+  if (tipo === 'personalizado') {
+    return `Total de saídas de ${mesCurto(inicio)}/${anoInicio.slice(2)} até ${mesCurto(fim)}/${fim.slice(2, 4)}`;
+  }
+  return `Total de saídas em ${fmtMesLabel(mesAtual).toLowerCase()}`;
+}
+
+async function carregarCategoriasBar() {
+  const { inicio, fim } = calcularRangePeriodo();
+  let lancs;
+  if (inicio === fim && inicio === fmtMesRef(mesAtual)) {
+    lancs = lancamentosMes;
+  } else {
+    const { data } = await sb.from('fin_lancamentos').select('*').gte('mes_ref', inicio).lte('mes_ref', fim);
+    lancs = (data || []).filter(l => l.status !== 'removido');
+  }
+  renderCategoriasBar(lancs, inicio, fim);
+}
+
+function renderCategoriasBar(lancs, inicio, fim) {
+  const saidas = lancs.filter(l => l.tipo === 'saida');
   const total = saidas.reduce((s, l) => s + Number(l.valor), 0);
   document.getElementById('catbar-total-valor').textContent = fmtBRL(total);
+  document.getElementById('catbar-periodo-label').textContent = fmtPeriodoLabel(periodoTipo, inicio, fim);
 
   const porCategoria = {};
   saidas.forEach(l => {
@@ -1068,6 +1144,24 @@ function mesTitulo(mesRef) {
   const d = new Date(mesRef + 'T00:00:00');
   return fmtMesLabel(d);
 }
+
+// ---------- FILTRO DE PERÍODO (gastos por categoria) ----------
+document.querySelectorAll('#periodo-pills button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#periodo-pills button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    periodoTipo = btn.dataset.periodo;
+    document.getElementById('periodo-custom').style.display = periodoTipo === 'personalizado' ? 'flex' : 'none';
+    if (periodoTipo === 'personalizado' && !document.getElementById('periodo-de').value) {
+      const mesStr = fmtMesRef(mesAtual).slice(0, 7);
+      document.getElementById('periodo-de').value = mesStr;
+      document.getElementById('periodo-ate').value = mesStr;
+    }
+    carregarCategoriasBar();
+  });
+});
+document.getElementById('periodo-de').addEventListener('change', carregarCategoriasBar);
+document.getElementById('periodo-ate').addEventListener('change', carregarCategoriasBar);
 
 // ---------- TABS ----------
 document.querySelectorAll('.tabs button').forEach(btn => {
