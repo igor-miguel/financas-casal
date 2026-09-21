@@ -193,6 +193,24 @@ header.topbar {
 .tile .value.good { color: var(--good); }
 .tile .value.bad { color: var(--critical); }
 .tile .sub { font-size: .78rem; color: var(--text-secondary); margin-top: 4px; }
+.tile .delta { font-size: .76rem; font-weight: 700; margin-top: 5px; font-variant-numeric: tabular-nums; }
+.tile .delta.bom { color: var(--good); }
+.tile .delta.ruim { color: var(--critical); }
+.tile .delta.neutro { color: var(--muted); }
+.tile .delta .delta-ref { color: var(--muted); font-weight: 400; }
+
+/* ---- alertas de vencimento ---- */
+.card-alerta { border-left: 3px solid var(--warning); }
+.alerta-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.alerta-resumo { display: flex; gap: 14px; font-size: .82rem; color: var(--text-secondary); flex-wrap: wrap; }
+.alerta-resumo .atrasada { color: var(--critical); }
+.alerta-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 0; border-top: 1px solid var(--grid); flex-wrap: wrap;
+}
+.alerta-nome { font-size: .88rem; flex: 1 1 160px; min-width: 0; }
+.alerta-quando { display: block; font-size: .74rem; color: var(--muted); margin-top: 1px; }
+.alerta-quando.atrasada { color: var(--critical); font-weight: 600; }
 
 .progress-bar { height: 8px; border-radius: 4px; background: var(--grid); overflow: hidden; margin-top: 8px; }
 .progress-bar > div { height: 100%; background: var(--good); border-radius: 4px; }
@@ -376,6 +394,30 @@ form.form-collapse { display: none; }
   background: var(--field-bg); color: var(--text-primary); font-size: .88rem; font-variant-numeric: tabular-nums;
 }
 
+/* ---- ajustes (contas fixas + metas) ---- */
+.ajuste-row {
+  display: grid; grid-template-columns: 1.4fr 1fr .7fr .7fr auto; gap: 8px; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid var(--grid);
+}
+.ajuste-row:last-of-type { border-bottom: none; }
+.ajuste-head {
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  font-weight: 700; border-bottom: 1px solid var(--grid); padding-bottom: 6px;
+}
+.ajuste-row input, .ajuste-row select {
+  width: 100%; min-width: 0; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--field-bg); color: var(--text-primary); font-size: .85rem;
+}
+.ajuste-row input[type="number"] { font-variant-numeric: tabular-nums; }
+.ajuste-row.inativa { opacity: .5; }
+@media (max-width: 700px) {
+  .ajuste-row { grid-template-columns: 1fr 1fr; }
+  .ajuste-head { display: none; }
+}
+.marcos-input-wrap { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.marcos-input-wrap > div { flex: 1 1 220px; }
+.marcos-input-wrap button { flex: 0 0 auto; width: auto; padding: 9px 16px; }
+
 /* ---- modal de edição ---- */
 .modal-overlay {
   display: none; position: fixed; inset: 0; background: rgba(11,11,11,0.45);
@@ -413,6 +455,7 @@ form.form-collapse { display: none; }
         <button data-tab="investimentos">📈 Investimentos</button>
         <button data-tab="dicas">💡 Dicas</button>
         <button data-tab="historico">🕒 Histórico</button>
+        <button data-tab="ajustes">⚙️ Ajustes</button>
       </div>
       <div class="sidebar-foot">
         <div class="sidebar-user" id="user-email"></div>
@@ -434,6 +477,8 @@ form.form-collapse { display: none; }
         <div class="tiles" id="tiles"></div>
 
         <div class="tab-panel active" id="tab-dashboard">
+
+      <div id="alertas"></div>
 
       <section class="card">
         <div class="section-title">
@@ -557,7 +602,7 @@ form.form-collapse { display: none; }
         <p class="muted">Reserva + investimentos, projetado pros próximos 12 meses no ritmo atual de aporte (<b id="ritmo-mensal-label"></b>/mês). É uma projeção linear simples — não considera valorização ou perda dos investimentos, só o que você tende a aportar por mês.</p>
         <div class="chart-wrap"><svg id="chart-projecao" class="chart"></svg></div>
         <div class="legend">
-          <span><i style="background:var(--good)"></i> Hoje</span>
+          <span><i style="background:var(--good)"></i> Patrimônio real</span>
           <span><i style="background:var(--chip-1)"></i> Projeção (aporte mensal)</span>
         </div>
       </section>
@@ -629,8 +674,78 @@ form.form-collapse { display: none; }
       </section>
     </div>
 
+    <div class="tab-panel" id="tab-ajustes">
+
+      <section class="card">
+        <div class="section-title">
+          <h2>Contas fixas</h2>
+          <button class="add-toggle" onclick="toggleForm('form-conta-fixa')">+ Nova conta fixa</button>
+        </div>
+        <p class="muted">Editar aqui vale pros <b>próximos meses</b>. As contas já lançadas neste mês você ajusta no Dashboard.</p>
+        <form class="form-grid form-collapse" id="form-conta-fixa" onsubmit="return novaContaFixa(event)">
+          <div class="full">
+            <label>Nome</label>
+            <input type="text" id="cf-nome" required placeholder="Ex: Aluguel, Internet...">
+          </div>
+          <div>
+            <label>Valor esperado (R$)</label>
+            <input type="number" step="0.01" id="cf-valor" required>
+          </div>
+          <div>
+            <label>Categoria</label>
+            <select id="cf-categoria"></select>
+          </div>
+          <div>
+            <label>Dia do vencimento</label>
+            <input type="number" min="1" max="31" id="cf-dia" placeholder="5">
+          </div>
+          <button class="btn" type="submit">Adicionar</button>
+        </form>
+        <div id="lista-contas-fixas" style="margin-top:14px;"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <h2>Metas</h2>
+        </div>
+        <form class="form-grid" id="form-metas" onsubmit="return salvarMetas(event)">
+          <div>
+            <label>Aporte mensal pra reserva (R$)</label>
+            <input type="number" step="0.01" id="meta-aporte" required>
+          </div>
+          <div>
+            <label>Meta final de patrimônio (R$)</label>
+            <input type="number" step="0.01" id="meta-total">
+          </div>
+          <div class="full">
+            <label>Marcos da reserva (separados por vírgula)</label>
+            <input type="text" id="meta-marcos" placeholder="5000, 10000, 20000, 50000, 80000, 100000">
+          </div>
+          <button class="btn" type="submit">Salvar metas</button>
+        </form>
+      </section>
+
+    </div>
+
       </div>
     </div>
+  </div>
+</div>
+
+<div id="modal-aporte" class="modal-overlay" onclick="fecharModalAporteSeFora(event)">
+  <div class="modal-card">
+    <h2>Pra onde foi esse aporte?</h2>
+    <p class="muted" id="aporte-valor-label"></p>
+    <form class="form-grid" onsubmit="return confirmarAlocacaoAporte(event)">
+      <div class="full">
+        <label>Destino</label>
+        <select id="aporte-destino"></select>
+      </div>
+      <div class="full" style="display:flex; gap:8px;">
+        <button type="button" class="btn btn-secondary" onclick="fecharModalAporte()">Deixar na reserva</button>
+        <button type="submit" class="btn">Alocar</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -712,10 +827,15 @@ let metas = null;
 let historico = [];
 let mesAtual = primeiroDiaMes(new Date());
 let lancamentosMes = [];
+let lancamentosMesAnterior = [];
 let reservaAcumulada = 0;
 let periodoTipo = 'mensal';
 let viewTipo = 'barras';
 let investimentos = [];
+let investimentosHist = [];
+let contasFixasTodas = [];
+let aportesReserva = [];
+const DIAS_ALERTA_VENCIMENTO = 7;
 
 function primeiroDiaMes(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
 function fmtMesRef(d) { return d.toISOString().slice(0,10); }
@@ -735,7 +855,8 @@ function fmtMesLabel(d) {
 function fmtBRL(v) {
   return (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
-const METAS_RESERVA = [5000, 10000, 20000, 50000, 80000, 100000];
+// marcos da reserva: padrão, sobrescrito por fin_metas.marcos quando o Igor edita em Ajustes
+let METAS_RESERVA = [5000, 10000, 20000, 50000, 80000, 100000];
 function fmtMilhar(v) {
   return v >= 1000 ? `${(v/1000).toLocaleString('pt-BR')}k` : `${v}`;
 }
@@ -780,18 +901,24 @@ async function entrarNoApp(user) {
 
 // ---------- CARGA DE DADOS ----------
 async function carregarDadosBase() {
-  const [{ data: cats }, { data: fixas }, { data: mts }, { data: hist }, { data: invs }] = await Promise.all([
+  const [{ data: cats }, { data: fixas }, { data: mts }, { data: hist }, { data: invs }, { data: invHist }] = await Promise.all([
     sb.from('fin_categorias').select('*').order('tipo').order('ordem'),
-    sb.from('fin_contas_fixas').select('*').eq('ativo', true),
+    sb.from('fin_contas_fixas').select('*').order('id'),
     sb.from('fin_metas').select('*').order('id', { ascending: false }).limit(1),
     sb.from('fin_historico_mensal').select('*').order('mes_ref'),
     sb.from('fin_investimentos').select('*').eq('ativo', true).order('created_at'),
+    sb.from('fin_investimentos_hist').select('*').order('data'),
   ]);
   categorias = cats || [];
-  contasFixas = fixas || [];
+  contasFixasTodas = fixas || [];
+  contasFixas = contasFixasTodas.filter(cf => cf.ativo);
   metas = (mts && mts[0]) || { meta_investir_mensal: 1500, meta_reserva_total: 100000 };
   historico = hist || [];
   investimentos = invs || [];
+  investimentosHist = invHist || [];
+  if (Array.isArray(metas.marcos) && metas.marcos.length) {
+    METAS_RESERVA = metas.marcos.map(Number).filter(n => !isNaN(n) && n > 0).sort((a, b) => a - b);
+  }
 
   const selCat = (id, tipo) => {
     const el = document.getElementById(id);
@@ -801,17 +928,23 @@ async function carregarDadosBase() {
   selCat('desp-categoria', 'saida');
   selCat('ent-categoria', 'entrada');
 
-  // reserva acumulada = soma de tudo já pago na categoria "Investimento / Reserva", em qualquer mês
+  // reserva acumulada = soma do que já foi pago na categoria "Investimento / Reserva" e ainda
+  // NÃO foi alocado num investimento específico. O que foi alocado (investimento_id preenchido)
+  // já está contado dentro do valor_atual daquele investimento — somar os dois duplicaria.
   const catReserva = categorias.find(c => c.nome.toLowerCase().includes('reserva') && c.tipo === 'saida');
   if (catReserva) {
     const { data: aportes } = await sb.from('fin_lancamentos')
-      .select('valor').eq('categoria_id', catReserva.id).eq('status', 'pago');
-    reservaAcumulada = (aportes || []).reduce((s, l) => s + Number(l.valor), 0);
+      .select('valor, investimento_id, data_pago').eq('categoria_id', catReserva.id).eq('status', 'pago');
+    aportesReserva = (aportes || []);
+    reservaAcumulada = aportesReserva
+      .filter(l => !l.investimento_id)
+      .reduce((s, l) => s + Number(l.valor), 0);
   }
 
   renderTilesInvestimentos();
   renderInvestimentos();
   desenharProjecaoPatrimonio();
+  renderAjustes();
 }
 
 async function carregarMes() {
@@ -840,7 +973,14 @@ async function carregarMes() {
 
   // lancs (bruto, com os "removido") só serve pra idsFixasNoMes acima, não pra exibir/somar
   lancamentosMes = lancs.filter(l => l.status !== 'removido');
+
+  // mês anterior, só pra comparação nos tiles (não gera contas fixas nem edita nada)
+  const mesAnterior = new Date(mesAtual.getFullYear(), mesAtual.getMonth() - 1, 1);
+  const { data: lancsAnt } = await sb.from('fin_lancamentos').select('*').eq('mes_ref', fmtMesRef(mesAnterior));
+  lancamentosMesAnterior = (lancsAnt || []).filter(l => l.status !== 'removido');
+
   renderTiles();
+  renderAlertas();
   await carregarCategoriasBar();
   renderContas();
   renderEntradas();
@@ -857,9 +997,65 @@ function mudaMes(delta) {
 async function darBaixa(id, statusAtual) {
   const novoStatus = statusAtual === 'pago' ? 'pendente' : 'pago';
   const dataPago = novoStatus === 'pago' ? new Date().toISOString().slice(0,10) : null;
-  await sb.from('fin_lancamentos').update({ status: novoStatus, data_pago: dataPago }).eq('id', id);
+  const patch = { status: novoStatus, data_pago: dataPago };
+  // despagar um aporte desfaz a alocação: o dinheiro volta a não estar em investimento nenhum
+  if (novoStatus === 'pendente') patch.investimento_id = null;
+  await sb.from('fin_lancamentos').update(patch).eq('id', id);
   await carregarDadosBase();
   await carregarMes();
+  if (novoStatus === 'pago' && ehAporteReserva(id)) abrirModalAporte(id);
+}
+
+function ehAporteReserva(lancamentoId) {
+  const l = lancamentosMes.find(x => x.id === lancamentoId);
+  if (!l || l.tipo !== 'saida') return false;
+  const cat = categorias.find(c => c.id === l.categoria_id);
+  return !!(cat && cat.nome.toLowerCase().includes('reserva'));
+}
+
+// ---------- ALOCAR APORTE NUM INVESTIMENTO ----------
+let aporteEmAberto = null;
+
+function abrirModalAporte(lancamentoId) {
+  const l = lancamentosMes.find(x => x.id === lancamentoId);
+  if (!l) return;
+  if (!investimentos.length) return; // sem portfólio cadastrado, não faz sentido perguntar
+  aporteEmAberto = l;
+  document.getElementById('aporte-valor-label').textContent =
+    `${l.descricao} — ${fmtBRL(l.valor)}. Alocar num investimento move esse valor da reserva pro patrimônio investido.`;
+  document.getElementById('aporte-destino').innerHTML = investimentos
+    .map(i => `<option value="${i.id}">${metaInvestimento(i.tipo).icone} ${i.nome}</option>`).join('');
+  document.getElementById('modal-aporte').classList.add('open');
+}
+
+function fecharModalAporte() {
+  document.getElementById('modal-aporte').classList.remove('open');
+  aporteEmAberto = null;
+}
+function fecharModalAporteSeFora(ev) {
+  if (ev.target.id === 'modal-aporte') fecharModalAporte();
+}
+
+function confirmarAlocacaoAporte(ev) {
+  ev.preventDefault();
+  const investimentoId = parseInt(document.getElementById('aporte-destino').value);
+  const l = aporteEmAberto;
+  if (!l || isNaN(investimentoId)) { fecharModalAporte(); return false; }
+  (async () => {
+    const inv = investimentos.find(i => i.id === investimentoId);
+    if (inv) {
+      const novoAportado = Number(inv.valor_aportado) + Number(l.valor);
+      const novoAtual = Number(inv.valor_atual) + Number(l.valor);
+      await sb.from('fin_investimentos')
+        .update({ valor_aportado: novoAportado, valor_atual: novoAtual }).eq('id', investimentoId);
+      await registrarValorInvestimento(investimentoId, novoAtual);
+      await sb.from('fin_lancamentos').update({ investimento_id: investimentoId }).eq('id', l.id);
+    }
+    fecharModalAporte();
+    await carregarDadosBase();
+    await carregarMes();
+  })();
+  return false;
 }
 
 async function excluirLancamento(id) {
@@ -996,17 +1192,28 @@ function renderTiles() {
     ? `Meta final de ${fmtBRL(metaFinal)} batida! 🏆`
     : `Próxima meta: ${fmtBRL(proximo)} — falta ${fmtBRL(proximo - reservaAcumulada)}`;
 
+  const entradaAnt = somaPorTipo(lancamentosMesAnterior, 'entrada');
+  const saidaAnt = somaPorTipo(lancamentosMesAnterior, 'saida');
+  const saldoAnt = entradaAnt - saidaAnt;
+  const temMesAnterior = lancamentosMesAnterior.length > 0;
+  const nomeMesAnterior = new Date(mesAtual.getFullYear(), mesAtual.getMonth() - 1, 1)
+    .toLocaleDateString('pt-BR', { month: 'long' });
+
   const tiles = [
-    { label: 'Entradas do mês', value: fmtBRL(entradaTotal), sub: `${entradas.length} lançamento(s)` },
-    { label: 'Saídas do mês', value: fmtBRL(saidaTotal), sub: `${fmtBRL(saidaPaga)} já pago` },
+    { label: 'Entradas do mês', value: fmtBRL(entradaTotal), sub: `${entradas.length} lançamento(s)`,
+      delta: delta(entradaTotal, entradaAnt, 'subir-bom') },
+    { label: 'Saídas do mês', value: fmtBRL(saidaTotal), sub: `${fmtBRL(saidaPaga)} já pago`,
+      delta: delta(saidaTotal, saidaAnt, 'subir-ruim') },
     { label: 'Saldo projetado', value: fmtBRL(saldoProjetado), cls: saldoProjetado >= 0 ? 'good' : 'bad',
-      sub: `Meta de investir: ${fmtBRL(metas.meta_investir_mensal)}/mês` },
+      sub: `Meta de investir: ${fmtBRL(metas.meta_investir_mensal)}/mês`,
+      delta: delta(saldoProjetado, saldoAnt, 'subir-bom') },
   ];
 
   const tilesHtml = tiles.map(t => `
     <div class="tile ${t.cls ? 'top-'+t.cls : ''}">
       <div class="label">${t.label}</div>
       <div class="value ${t.cls||''}">${t.value}</div>
+      ${temMesAnterior && t.delta ? `<div class="delta ${t.delta.cls}">${t.delta.seta} ${t.delta.texto} <span class="delta-ref">vs. ${nomeMesAnterior}</span></div>` : ''}
       <div class="sub">${t.sub}</div>
     </div>
   `).join('');
@@ -1024,6 +1231,81 @@ function renderTiles() {
   `;
 
   document.getElementById('tiles').innerHTML = tilesHtml + reservaHtml;
+}
+
+function somaPorTipo(lancs, tipo) {
+  return lancs.filter(l => l.tipo === tipo).reduce((s, l) => s + Number(l.valor), 0);
+}
+
+// variação vs. mês anterior. "sentido" diz se subir é bom (entradas, saldo) ou ruim (saídas),
+// porque a cor tem que seguir o significado, não o sinal.
+function delta(atual, anterior, sentido) {
+  if (!anterior) return null;
+  const diff = atual - anterior;
+  if (Math.abs(diff) < 0.01) return { seta: '=', texto: 'estável', cls: 'neutro' };
+  const pct = Math.abs(diff / anterior * 100);
+  const subiu = diff > 0;
+  const bom = sentido === 'subir-bom' ? subiu : !subiu;
+  return {
+    seta: subiu ? '▲' : '▼',
+    texto: `${pct.toFixed(0)}%`,
+    cls: bom ? 'bom' : 'ruim',
+  };
+}
+
+// ---------- ALERTAS DE VENCIMENTO ----------
+function renderAlertas() {
+  const el = document.getElementById('alertas');
+  const hojeStr = new Date().toISOString().slice(0, 10);
+  const limite = new Date(); limite.setDate(limite.getDate() + DIAS_ALERTA_VENCIMENTO);
+  const limiteStr = limite.toISOString().slice(0, 10);
+
+  const pendentes = lancamentosMes.filter(l =>
+    l.tipo === 'saida' && l.status === 'pendente' && l.data_vencimento);
+  const atrasadas = pendentes.filter(l => l.data_vencimento < hojeStr)
+    .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
+  const proximas = pendentes.filter(l => l.data_vencimento >= hojeStr && l.data_vencimento <= limiteStr)
+    .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
+
+  if (!atrasadas.length && !proximas.length) { el.innerHTML = ''; return; }
+
+  const totalAtrasado = atrasadas.reduce((s, l) => s + Number(l.valor), 0);
+  const totalProximo = proximas.reduce((s, l) => s + Number(l.valor), 0);
+
+  const linha = (l, atrasada) => {
+    const dias = diasEntre(hojeStr, l.data_vencimento);
+    const quando = atrasada
+      ? `atrasada há ${Math.abs(dias)} dia(s)`
+      : (dias === 0 ? 'vence hoje' : `vence em ${dias} dia(s)`);
+    return `
+      <div class="alerta-row">
+        <div class="alerta-nome">${l.descricao}<span class="alerta-quando ${atrasada ? 'atrasada' : ''}">${quando} · ${fmtDataCurta(l.data_vencimento)}</span></div>
+        <div class="conta-actions">
+          <div class="conta-valor">${fmtBRL(l.valor)}</div>
+          <button class="btn-baixa" onclick="darBaixa(${l.id}, 'pendente')">Dar baixa</button>
+        </div>
+      </div>`;
+  };
+
+  el.innerHTML = `
+    <section class="card card-alerta">
+      <div class="alerta-head">
+        <h2>${atrasadas.length ? '🔴' : '🟡'} Contas a pagar</h2>
+        <div class="alerta-resumo">
+          ${atrasadas.length ? `<span class="atrasada"><b>${fmtBRL(totalAtrasado)}</b> atrasado</span>` : ''}
+          ${proximas.length ? `<span><b>${fmtBRL(totalProximo)}</b> nos próximos ${DIAS_ALERTA_VENCIMENTO} dias</span>` : ''}
+        </div>
+      </div>
+      ${atrasadas.map(l => linha(l, true)).join('')}
+      ${proximas.map(l => linha(l, false)).join('')}
+    </section>
+  `;
+}
+
+function diasEntre(deStr, ateStr) {
+  const de = new Date(deStr + 'T00:00:00');
+  const ate = new Date(ateStr + 'T00:00:00');
+  return Math.round((ate - de) / 86400000);
 }
 
 function renderResumoRetro(itens, elId) {
@@ -1290,6 +1572,97 @@ function dataInfo(l) {
   return '';
 }
 
+// ---------- AJUSTES (contas fixas + metas) ----------
+function renderAjustes() {
+  const el = document.getElementById('lista-contas-fixas');
+  if (!el) return;
+
+  const selCf = document.getElementById('cf-categoria');
+  if (selCf && !selCf.options.length) {
+    selCf.innerHTML = categorias.filter(c => c.tipo === 'saida')
+      .map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+  }
+
+  document.getElementById('meta-aporte').value = Number(metas.meta_investir_mensal || 0);
+  document.getElementById('meta-total').value = Number(metas.meta_reserva_total || 0);
+  document.getElementById('meta-marcos').value = METAS_RESERVA.join(', ');
+
+  if (!contasFixasTodas.length) {
+    el.innerHTML = '<div class="empty">Nenhuma conta fixa cadastrada.</div>';
+    return;
+  }
+  const optsCategoria = (selecionada) => categorias.filter(c => c.tipo === 'saida')
+    .map(c => `<option value="${c.id}" ${c.id === selecionada ? 'selected' : ''}>${c.nome}</option>`).join('');
+
+  el.innerHTML = `
+    <div class="ajuste-row ajuste-head">
+      <div>Nome</div><div>Categoria</div><div>Valor</div><div>Dia</div><div></div>
+    </div>
+    ${contasFixasTodas.map(cf => `
+      <div class="ajuste-row ${cf.ativo ? '' : 'inativa'}">
+        <input type="text" value="${cf.nome}" onchange="salvarContaFixa(${cf.id}, 'nome', this.value)">
+        <select onchange="salvarContaFixa(${cf.id}, 'categoria_id', this.value)">${optsCategoria(cf.categoria_id)}</select>
+        <input type="number" step="0.01" value="${Number(cf.valor_esperado)}" onchange="salvarContaFixa(${cf.id}, 'valor_esperado', this.value)">
+        <input type="number" min="1" max="31" value="${cf.dia_vencimento || ''}" onchange="salvarContaFixa(${cf.id}, 'dia_vencimento', this.value)">
+        <button class="btn-del" onclick="alternarContaFixa(${cf.id}, ${cf.ativo})" title="${cf.ativo ? 'Desativar' : 'Reativar'}">${cf.ativo ? '✕' : '↺'}</button>
+      </div>
+    `).join('')}
+  `;
+}
+
+async function salvarContaFixa(id, campo, valor) {
+  const patch = {};
+  if (campo === 'valor_esperado') patch[campo] = parseFloat(valor) || 0;
+  else if (campo === 'categoria_id') patch[campo] = parseInt(valor);
+  else if (campo === 'dia_vencimento') patch[campo] = valor ? parseInt(valor) : null;
+  else patch[campo] = valor;
+  await sb.from('fin_contas_fixas').update(patch).eq('id', id);
+  await carregarDadosBase();
+}
+
+async function alternarContaFixa(id, ativoAtual) {
+  if (ativoAtual && !confirm('Desativar esta conta fixa? Ela para de ser lançada nos próximos meses.')) return;
+  await sb.from('fin_contas_fixas').update({ ativo: !ativoAtual }).eq('id', id);
+  await carregarDadosBase();
+}
+
+function novaContaFixa(ev) {
+  ev.preventDefault();
+  const nome = document.getElementById('cf-nome').value.trim();
+  const valor_esperado = parseFloat(document.getElementById('cf-valor').value);
+  const categoria_id = parseInt(document.getElementById('cf-categoria').value);
+  const diaRaw = document.getElementById('cf-dia').value;
+  const dia_vencimento = diaRaw ? parseInt(diaRaw) : null;
+  if (!nome || isNaN(valor_esperado)) return false;
+  (async () => {
+    await sb.from('fin_contas_fixas').insert([{ nome, valor_esperado, categoria_id, dia_vencimento, ativo: true }]);
+    document.getElementById('cf-nome').value = '';
+    document.getElementById('cf-valor').value = '';
+    document.getElementById('cf-dia').value = '';
+    document.getElementById('form-conta-fixa').classList.remove('open');
+    await carregarDadosBase();
+  })();
+  return false;
+}
+
+function salvarMetas(ev) {
+  ev.preventDefault();
+  const meta_investir_mensal = parseFloat(document.getElementById('meta-aporte').value) || 0;
+  const meta_reserva_total = parseFloat(document.getElementById('meta-total').value) || 0;
+  const marcos = document.getElementById('meta-marcos').value
+    .split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n) && n > 0).sort((a, b) => a - b);
+  (async () => {
+    await sb.from('fin_metas').update({
+      meta_investir_mensal, meta_reserva_total,
+      marcos: marcos.length ? marcos : null,
+    }).eq('id', metas.id);
+    await carregarDadosBase();
+    await carregarMes();
+    alert('Metas salvas.');
+  })();
+  return false;
+}
+
 // ---------- INVESTIMENTOS ----------
 function totalInvestido() {
   return investimentos.reduce((s, i) => s + Number(i.valor_atual), 0);
@@ -1371,7 +1744,9 @@ function novoInvestimento(ev) {
   const data_aporte = document.getElementById('inv-data').value || null;
   if (!nome || isNaN(valor_aportado) || isNaN(valor_atual)) return false;
   (async () => {
-    await sb.from('fin_investimentos').insert([{ nome, tipo, valor_aportado, valor_atual, data_aporte }]);
+    const { data: criado } = await sb.from('fin_investimentos')
+      .insert([{ nome, tipo, valor_aportado, valor_atual, data_aporte }]).select();
+    if (criado && criado[0]) await registrarValorInvestimento(criado[0].id, valor_atual, data_aporte);
     document.getElementById('inv-nome').value = '';
     document.getElementById('inv-aportado').value = '';
     document.getElementById('inv-atual').value = '';
@@ -1386,7 +1761,16 @@ async function atualizarValorInvestimento(id, novoValor) {
   const valor = parseFloat(novoValor);
   if (isNaN(valor)) return;
   await sb.from('fin_investimentos').update({ valor_atual: valor }).eq('id', id);
+  await registrarValorInvestimento(id, valor);
   await carregarDadosBase();
+}
+
+// grava o valor do investimento numa data — é o que dá curva real de patrimônio no gráfico.
+// um registro por investimento por dia: regravar no mesmo dia substitui em vez de empilhar.
+async function registrarValorInvestimento(investimentoId, valor, data) {
+  const dia = data || new Date().toISOString().slice(0, 10);
+  await sb.from('fin_investimentos_hist').delete().eq('investimento_id', investimentoId).eq('data', dia);
+  await sb.from('fin_investimentos_hist').insert([{ investimento_id: investimentoId, valor, data: dia }]);
 }
 
 async function excluirInvestimento(id) {
@@ -1395,9 +1779,45 @@ async function excluirInvestimento(id) {
   await carregarDadosBase();
 }
 
-// projeção linear de patrimônio: parte do total de hoje (reserva + investimentos) e soma o
-// aporte mensal da meta pra cada um dos próximos 12 meses. Não modela rentabilidade dos
-// investimentos por falta de série histórica confiável (valor_atual é um snapshot manual).
+// patrimônio numa data: reserva ainda não alocada (aportes pagos até a data) + valor dos
+// investimentos naquela data (último valor registrado no histórico até ali).
+function patrimonioNaData(dataStr) {
+  const reserva = aportesReserva
+    .filter(l => !l.investimento_id && l.data_pago && l.data_pago <= dataStr)
+    .reduce((s, l) => s + Number(l.valor), 0);
+  const investido = investimentos.reduce((s, inv) => {
+    const registros = investimentosHist
+      .filter(h => h.investimento_id === inv.id && h.data <= dataStr)
+      .sort((a, b) => a.data.localeCompare(b.data));
+    return s + (registros.length ? Number(registros[registros.length - 1].valor) : 0);
+  }, 0);
+  return reserva + investido;
+}
+
+// série real do passado: uma marcação por dia em que algo mudou (aporte pago ou valor de
+// investimento atualizado). Só vale a pena desenhar com 2+ pontos.
+// Começa no primeiro dia em que o patrimônio é *conhecido por inteiro* — se existem
+// investimentos cadastrados, antes do primeiro registro deles a soma estaria incompleta e
+// desenharia um salto que nunca aconteceu.
+function seriePassado() {
+  const hojeStr = new Date().toISOString().slice(0, 10);
+  const datasHist = investimentosHist.map(h => h.data).sort();
+  const inicioValido = investimentos.length ? (datasHist[0] || hojeStr) : null;
+
+  const datas = new Set();
+  aportesReserva.forEach(l => {
+    if (l.data_pago && l.data_pago <= hojeStr && (!inicioValido || l.data_pago >= inicioValido)) datas.add(l.data_pago);
+  });
+  investimentosHist.forEach(h => { if (h.data <= hojeStr) datas.add(h.data); });
+  const ordenadas = [...datas].sort();
+  if (ordenadas.length < 2) return [];
+  if (ordenadas[ordenadas.length - 1] !== hojeStr) ordenadas.push(hojeStr);
+  return ordenadas.map(d => ({ data: d, valor: patrimonioNaData(d) }));
+}
+
+// gráfico de patrimônio: o que já aconteceu (linha cheia, a partir do histórico real) +
+// os próximos 12 meses somando o aporte mensal da meta (linha tracejada). A projeção é
+// linear de propósito — não inventa rentabilidade futura.
 function desenharProjecaoPatrimonio() {
   const svg = document.getElementById('chart-projecao');
   if (!svg) return;
@@ -1405,24 +1825,35 @@ function desenharProjecaoPatrimonio() {
   document.getElementById('ritmo-mensal-label').textContent = fmtBRL(ritmoMensal);
 
   const meses = 12;
-  const inicio = patrimonioTotal();
-  const pontos = Array.from({ length: meses + 1 }, (_, i) => inicio + ritmoMensal * i);
+  const hoje = new Date();
+  const passado = seriePassado();
+  const hojeValor = patrimonioTotal();
 
-  const margemEsq = 52, margemBaixo = 26, margemTopo = 16;
+  const futuro = Array.from({ length: meses + 1 }, (_, i) => {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth() + i, hoje.getDate());
+    return { data: d.toISOString().slice(0, 10), valor: hojeValor + ritmoMensal * i };
+  });
+
+  const margemEsq = 52, margemBaixo = 26, margemTopo = 20;
   const w = Math.max(620, (meses + 1) * 48);
   const h = 210;
   const alturaPlot = h - margemBaixo - margemTopo;
-  const topoEscala = escalaLimpa(Math.max(...pontos, 1));
+  const todos = [...passado, ...futuro];
+  const topoEscala = escalaLimpa(Math.max(...todos.map(p => p.valor), 1));
   const yDe = v => h - margemBaixo - alturaPlot * (v / topoEscala);
-  const stepX = (w - margemEsq - 16) / meses;
-  const xDe = i => margemEsq + i * stepX;
 
-  const corAccent = corTema('--good');
+  const t = s => new Date(s + 'T00:00:00').getTime();
+  const tIni = t(passado.length ? passado[0].data : futuro[0].data);
+  const tFim = t(futuro[futuro.length - 1].data);
+  const larguraPlot = w - margemEsq - 16;
+  const xDe = dataStr => margemEsq + ((t(dataStr) - tIni) / Math.max(tFim - tIni, 1)) * larguraPlot;
+
+  const corReal = corTema('--good');
   const corProjecao = corTema('--chip-1');
   const corMuted = corTema('--muted');
   const corGrid = corTema('--grid');
+  const corSurface = corTema('--surface-1');
 
-  // gridlines horizontais em valores redondos, pra dar noção de magnitude sem poluir
   let grades = '';
   [0, 0.5, 1].forEach(frac => {
     const v = topoEscala * frac;
@@ -1431,32 +1862,48 @@ function desenharProjecaoPatrimonio() {
     grades += `<text x="${margemEsq-8}" y="${y+3}" font-size="9" fill="${corMuted}" text-anchor="end">${fmtMilhar(Math.round(v))}</text>`;
   });
 
-  let pathD = '';
+  const caminho = pts => pts.map((p, i) => (i === 0 ? 'M' : 'L') + xDe(p.data) + ',' + yDe(p.valor)).join(' ');
   let marcadores = '';
-  pontos.forEach((v, i) => {
-    const x = xDe(i), y = yDe(v);
-    pathD += (i === 0 ? 'M' : 'L') + x + ',' + y + ' ';
-    const d = new Date(mesAtual); d.setMonth(d.getMonth() + i);
-    if (i === 0 || i % 3 === 0) {
-      const rotulo = i === 0 ? 'hoje' : d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
-      marcadores += `<text x="${x}" y="${h-6}" font-size="9" fill="${corMuted}" text-anchor="middle">${rotulo}</text>`;
-    }
-    if (i === 0) {
-      marcadores += `<circle cx="${x}" cy="${y}" r="4.5" fill="${corAccent}" stroke="${corTema('--surface-1')}" stroke-width="2"><title>Hoje — ${fmtBRL(v)}</title></circle>`;
-    } else if (i % 3 === 0) {
-      marcadores += `<circle cx="${x}" cy="${y}" r="3.5" fill="${corProjecao}"><title>${mesTitulo(fmtMesRef(d))} (projeção) — ${fmtBRL(v)}</title></circle>`;
+
+  // linha do passado (real)
+  let pathPassado = '';
+  if (passado.length >= 2) {
+    pathPassado = `<path d="${caminho(passado)}" fill="none" stroke="${corReal}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+    passado.forEach(p => {
+      marcadores += `<circle cx="${xDe(p.data)}" cy="${yDe(p.valor)}" r="3" fill="${corReal}"><title>${fmtDataCurta(p.data)} — ${fmtBRL(p.valor)}</title></circle>`;
+    });
+  }
+
+  // linha da projeção (tracejada) + área de apoio
+  const pathFuturo = `<path d="${caminho(futuro)}" fill="none" stroke="${corProjecao}" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round"/>`;
+  const areaD = `${caminho(futuro)} L${xDe(futuro[futuro.length-1].data)},${yDe(0)} L${xDe(futuro[0].data)},${yDe(0)} Z`;
+
+  futuro.forEach((p, i) => {
+    if (i > 0 && i % 3 === 0) {
+      marcadores += `<circle cx="${xDe(p.data)}" cy="${yDe(p.valor)}" r="3.5" fill="${corProjecao}"><title>${fmtDataCurta(p.data)} (projeção) — ${fmtBRL(p.valor)}</title></circle>`;
     }
   });
-  const ultimo = pontos[pontos.length - 1];
-  const areaD = `${pathD} L${xDe(meses)},${yDe(0)} L${xDe(0)},${yDe(0)} Z`;
+  // ponto "hoje": fronteira entre o real e o projetado
+  marcadores += `<circle cx="${xDe(futuro[0].data)}" cy="${yDe(hojeValor)}" r="4.5" fill="${corReal}" stroke="${corSurface}" stroke-width="2"><title>Hoje — ${fmtBRL(hojeValor)}</title></circle>`;
+
+  // rótulos do eixo x: começo da série, hoje, e o fim da projeção
+  const mesAno = d => d.slice(5, 7) + '/' + d.slice(2, 4);
+  const rotulos = [];
+  if (passado.length >= 2) rotulos.push({ data: passado[0].data, txt: mesAno(passado[0].data) });
+  rotulos.push({ data: futuro[0].data, txt: 'hoje' });
+  [3, 6, 9, 12].forEach(i => rotulos.push({ data: futuro[i].data, txt: mesAno(futuro[i].data) }));
+  rotulos.forEach(r => {
+    marcadores += `<text x="${xDe(r.data)}" y="${h-6}" font-size="9" fill="${corMuted}" text-anchor="middle">${r.txt}</text>`;
+  });
+
+  const ultimo = futuro[futuro.length - 1].valor;
   marcadores += `<text x="${w-8}" y="${Math.max(yDe(ultimo)-10, 12)}" font-size="11" font-weight="700" fill="${corProjecao}" text-anchor="end">${fmtBRL(ultimo)}</text>`;
 
   svg.setAttribute('width', w);
   svg.setAttribute('height', h);
   svg.innerHTML = `${grades}
     <path d="${areaD}" fill="${corProjecao}" fill-opacity="0.08" stroke="none"/>
-    <path d="${pathD}" fill="none" stroke="${corProjecao}" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round"/>
-    ${marcadores}`;
+    ${pathPassado}${pathFuturo}${marcadores}`;
 }
 
 // arredonda o topo do eixo pra um número "limpo" (5k, 10k, 25k, 50k...) em vez do valor exato
@@ -1658,7 +2105,7 @@ document.querySelectorAll('#view-toggle button').forEach(btn => {
 });
 
 // ---------- NAVEGAÇÃO (sidebar) ----------
-const TITULO_TAB = { dashboard: 'Dashboard', investimentos: 'Investimentos', dicas: 'Dicas', historico: 'Histórico' };
+const TITULO_TAB = { dashboard: 'Dashboard', investimentos: 'Investimentos', dicas: 'Dicas', historico: 'Histórico', ajustes: 'Ajustes' };
 document.querySelectorAll('.sidebar-nav button').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.sidebar-nav button').forEach(b => b.classList.remove('active'));
@@ -1666,8 +2113,8 @@ document.querySelectorAll('.sidebar-nav button').forEach(btn => {
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     document.getElementById('page-title').textContent = TITULO_TAB[btn.dataset.tab] || '';
-    // investimentos não é uma visão do mês: esconde o seletor de mês e os tiles mensais
-    const escondeMes = btn.dataset.tab === 'investimentos';
+    // investimentos e ajustes não são visões do mês: escondem o seletor de mês e os tiles mensais
+    const escondeMes = btn.dataset.tab === 'investimentos' || btn.dataset.tab === 'ajustes';
     document.getElementById('tiles').style.display = escondeMes ? 'none' : '';
     document.querySelector('.month-nav').style.display = escondeMes ? 'none' : '';
   });
