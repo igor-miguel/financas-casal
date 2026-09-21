@@ -204,6 +204,9 @@ header.topbar {
 .tile .delta .delta-ref { color: var(--muted); font-weight: 400; }
 
 /* ---- alertas de vencimento ---- */
+.alertas-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 26px; align-items: start; }
+.alertas-grid > .card-alerta { margin-bottom: 0; }
+@media (max-width: 760px) { .alertas-grid { grid-template-columns: 1fr; } }
 .card-alerta { border-left: 3px solid var(--warning); }
 .alerta-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 .alerta-head h2 { display: flex; align-items: center; gap: 8px; }
@@ -1312,18 +1315,25 @@ function delta(atual, anterior, sentido) {
   };
 }
 
-// ---------- CONTAS A PAGAR (todo o mês) ----------
+// ---------- CONTAS A PAGAR E A RECEBER (todo o mês) ----------
 function renderAlertas() {
   const el = document.getElementById('alertas');
+  const blocoPagar = blocoContasPendentes('saida', 'Contas a pagar', 'atrasada', 'Dar baixa');
+  const blocoReceber = blocoContasPendentes('entrada', 'Contas a receber', 'atrasada', 'Marcar recebido');
+  if (!blocoPagar && !blocoReceber) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="alertas-grid">${blocoPagar}${blocoReceber}</div>`;
+}
+
+function blocoContasPendentes(tipo, titulo, palavraAtraso, textoBotao) {
   const hojeStr = new Date().toISOString().slice(0, 10);
 
-  const pendentes = lancamentosMes.filter(l => l.tipo === 'saida' && l.status === 'pendente');
+  const pendentes = lancamentosMes.filter(l => l.tipo === tipo && l.status === 'pendente');
   const atrasadas = pendentes.filter(l => l.data_vencimento && l.data_vencimento < hojeStr)
     .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
   const restoMes = pendentes.filter(l => !l.data_vencimento || l.data_vencimento >= hojeStr)
     .sort((a, b) => (a.data_vencimento || '9999').localeCompare(b.data_vencimento || '9999'));
 
-  if (!atrasadas.length && !restoMes.length) { el.innerHTML = ''; return; }
+  if (!atrasadas.length && !restoMes.length) return '';
 
   const totalAtrasado = atrasadas.reduce((s, l) => s + Number(l.valor), 0);
   const totalRestoMes = restoMes.reduce((s, l) => s + Number(l.valor), 0);
@@ -1333,7 +1343,7 @@ function renderAlertas() {
     if (l.data_vencimento) {
       const dias = diasEntre(hojeStr, l.data_vencimento);
       quando = atrasada
-        ? `atrasada há ${Math.abs(dias)} dia(s)`
+        ? `${palavraAtraso} há ${Math.abs(dias)} dia(s)`
         : (dias === 0 ? 'vence hoje' : `vence em ${dias} dia(s)`);
       quando += ` · ${fmtDataCurta(l.data_vencimento)}`;
     } else {
@@ -1344,15 +1354,15 @@ function renderAlertas() {
         <div class="alerta-nome">${l.descricao}<span class="alerta-quando ${atrasada ? 'atrasada' : ''}">${quando}</span></div>
         <div class="conta-actions">
           <div class="conta-valor">${fmtBRL(l.valor)}</div>
-          <button class="btn-baixa" onclick="darBaixa(${l.id}, 'pendente')">Dar baixa</button>
+          <button class="btn-baixa" onclick="darBaixa(${l.id}, 'pendente')">${textoBotao}</button>
         </div>
       </div>`;
   };
 
-  el.innerHTML = `
+  return `
     <section class="card card-alerta">
       <div class="alerta-head">
-        <h2><span class="alerta-ico ${atrasadas.length ? 'critico' : ''}">${svgIcone(atrasadas.length ? 'alerta' : 'relogio')}</span>Contas a pagar</h2>
+        <h2><span class="alerta-ico ${atrasadas.length ? 'critico' : ''}">${svgIcone(atrasadas.length ? 'alerta' : 'relogio')}</span>${titulo}</h2>
         <div class="alerta-resumo">
           ${atrasadas.length ? `<span class="atrasada"><b>${fmtBRL(totalAtrasado)}</b> atrasado</span>` : ''}
           ${restoMes.length ? `<span><b>${fmtBRL(totalRestoMes)}</b> ainda este mês</span>` : ''}
