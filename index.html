@@ -292,6 +292,16 @@ svg.chart { display: block; }
 .mosaico-tooltip b { font-variant-numeric: tabular-nums; }
 .mosaico-nota { font-size: .74rem; color: var(--muted); margin-top: 12px; }
 
+/* ---- gastos por categoria (pizza) ---- */
+.pizza-wrap { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+.pizza-chart-box { position: relative; width: 180px; height: 180px; flex-shrink: 0; }
+.pizza-svg { width: 100%; height: 100%; }
+.pizza-fatia { transition: opacity .15s; cursor: pointer; }
+.pizza-fatia:hover, .pizza-fatia:focus-visible { opacity: .82; outline: none; }
+.pizza-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; text-align: center; }
+.pizza-center-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.pizza-center-valor { font-size: 1.02rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
 .periodo-pills, .view-toggle { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
 .periodo-pills button, .view-toggle button {
   border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
@@ -512,6 +522,7 @@ form.form-collapse { display: none; }
           <div class="view-toggle" id="view-toggle">
             <button data-view="barras" class="active">Barras</button>
             <button data-view="mosaico">Mosaico</button>
+            <button data-view="pizza">Pizza</button>
           </div>
         </div>
         <div class="periodo-pills" id="periodo-pills">
@@ -1457,6 +1468,8 @@ function renderCategoriasBar(lancs, inicio, fim) {
   }
   if (viewTipo === 'mosaico') {
     renderCatbarMosaico(ranking, total, el);
+  } else if (viewTipo === 'pizza') {
+    renderCatbarPizza(ranking, total, el);
   } else {
     renderCatbarBarras(ranking, total, el);
   }
@@ -1567,6 +1580,83 @@ function ativarTooltipMosaico(ranking, total) {
     mostrar(cel, r.left, r.top);
   });
   grid.addEventListener('focusout', esconder);
+}
+
+// pizza (donut): um círculo SVG por categoria, desenhado com stroke-dasharray —
+// cada fatia é um arco proporcional ao valor da categoria sobre o total de saídas.
+function renderCatbarPizza(ranking, total, el) {
+  const cx = 90, cy = 90, r = 70, strokeW = 34;
+  const circ = 2 * Math.PI * r;
+  let acumulado = 0;
+  const fatias = ranking.map(([nome, valor]) => {
+    const meta = metaCategoria(nome);
+    const pct = total ? valor / total : 0;
+    const dash = pct * circ;
+    const dashoffset = -acumulado;
+    acumulado += dash;
+    return `<circle class="pizza-fatia" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${meta.chip}" stroke-width="${strokeW}" stroke-dasharray="${dash} ${circ - dash}" stroke-dashoffset="${dashoffset}" data-nome="${nome.replace(/"/g,'&quot;')}" tabindex="0"></circle>`;
+  }).join('');
+  const legenda = ranking.map(([nome, valor]) => {
+    const meta = metaCategoria(nome);
+    const pct = total ? (valor / total * 100) : 0;
+    return `
+      <div class="mosaico-legenda-item">
+        <span class="dot" style="background:${meta.chip}"></span>
+        <span class="nome">${nome}</span>
+        <span class="pct">${pct.toFixed(0)}%</span>
+        <span class="valor">${fmtBRL(valor)}</span>
+      </div>
+    `;
+  }).join('');
+  el.innerHTML = `
+    <div class="pizza-wrap">
+      <div class="pizza-chart-box">
+        <svg viewBox="0 0 180 180" class="pizza-svg" id="pizza-svg">
+          <g transform="rotate(-90 90 90)">${fatias}</g>
+        </svg>
+        <div class="pizza-center">
+          <span class="pizza-center-label">Total</span>
+          <span class="pizza-center-valor">${fmtBRL(total)}</span>
+        </div>
+      </div>
+      <div class="mosaico-legenda">${legenda}</div>
+    </div>
+  `;
+  ativarTooltipPizza(ranking, total);
+}
+
+function ativarTooltipPizza(ranking, total) {
+  const svg = document.getElementById('pizza-svg');
+  const tt = document.getElementById('mosaico-tooltip');
+  const porNome = Object.fromEntries(ranking);
+  const mostrar = (fatia, x, y) => {
+    const nome = fatia.dataset.nome;
+    const valor = porNome[nome] || 0;
+    const pct = total ? (valor / total * 100) : 0;
+    tt.innerHTML = '';
+    const b = document.createElement('b');
+    b.textContent = fmtBRL(valor) + ' ';
+    const span = document.createElement('span');
+    span.textContent = `· ${nome} (${pct.toFixed(0)}%)`;
+    tt.appendChild(b);
+    tt.appendChild(span);
+    tt.style.display = 'block';
+    tt.style.left = Math.min(x + 12, window.innerWidth - tt.offsetWidth - 12) + 'px';
+    tt.style.top = (y + 16) + 'px';
+  };
+  const esconder = () => { tt.style.display = 'none'; };
+  svg.addEventListener('pointermove', ev => {
+    const fatia = ev.target.closest('.pizza-fatia');
+    if (fatia) mostrar(fatia, ev.clientX, ev.clientY);
+  });
+  svg.addEventListener('pointerleave', esconder);
+  svg.addEventListener('focusin', ev => {
+    const fatia = ev.target.closest('.pizza-fatia');
+    if (!fatia) return;
+    const rct = fatia.getBoundingClientRect();
+    mostrar(fatia, rct.left, rct.top);
+  });
+  svg.addEventListener('focusout', esconder);
 }
 
 function renderContas() {
@@ -2166,7 +2256,7 @@ document.querySelectorAll('#periodo-pills button').forEach(btn => {
 document.getElementById('periodo-de').addEventListener('change', carregarCategoriasBar);
 document.getElementById('periodo-ate').addEventListener('change', carregarCategoriasBar);
 
-// ---------- VISUALIZAÇÃO (barras / mosaico) ----------
+// ---------- VISUALIZAÇÃO (barras / mosaico / pizza) ----------
 document.querySelectorAll('#view-toggle button').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('#view-toggle button').forEach(b => b.classList.remove('active'));
