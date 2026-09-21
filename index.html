@@ -73,10 +73,14 @@ body {
 }
 .wrap { max-width: 960px; margin: 0 auto; padding: 20px 16px 80px; }
 h1,h2,h3 { margin: 0 0 4px; }
-h1 { font-size: 1.3rem; }
-h2 { font-size: 1.05rem; }
+h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -.01em; }
+h2 { font-size: .95rem; font-weight: 700; }
 .muted { color: var(--muted); font-size: .85rem; }
 .secondary { color: var(--text-secondary); }
+.eyebrow {
+  text-transform: uppercase; letter-spacing: .08em; font-size: .68rem; font-weight: 700;
+  color: var(--muted);
+}
 
 /* ---- login ---- */
 #login-screen {
@@ -103,14 +107,15 @@ h2 { font-size: 1.05rem; }
 #app { display: none; }
 header.topbar {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 18px; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 20px; padding-bottom: 16px; gap: 8px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--grid);
 }
 .month-nav { display: flex; align-items: center; gap: 8px; }
 .month-nav button {
   border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary);
   border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 1rem;
 }
-#mes-label { font-weight: 600; min-width: 130px; text-align: center; }
+#mes-label { font-weight: 700; min-width: 130px; text-align: center; font-variant-numeric: tabular-nums; }
 #logout-btn {
   background: none; border: 1px solid var(--border); color: var(--text-secondary);
   padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: .85rem;
@@ -119,11 +124,17 @@ header.topbar {
 /* ---- tiles ---- */
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 22px; }
 .tile {
-  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--card-radius);
-  padding: 14px 16px; box-shadow: 0 1px 3px rgba(11,11,11,0.08);
+  background: var(--surface-1); border: 1px solid var(--border); border-top: 3px solid var(--border);
+  border-radius: var(--card-radius);
+  padding: 14px 16px; box-shadow: 0 1px 2px rgba(11,11,11,0.04);
 }
-.tile .label { font-size: .78rem; color: var(--muted); margin-bottom: 4px; }
-.tile .value { font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile.top-good { border-top-color: var(--good); }
+.tile.top-bad { border-top-color: var(--critical); }
+.tile .label {
+  font-size: .68rem; color: var(--muted); margin-bottom: 6px;
+  text-transform: uppercase; letter-spacing: .07em; font-weight: 700;
+}
+.tile .value { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .tile .value.good { color: var(--good); }
 .tile .value.bad { color: var(--critical); }
 .tile .sub { font-size: .78rem; color: var(--text-secondary); margin-top: 4px; }
@@ -141,9 +152,12 @@ header.topbar {
 section { margin-bottom: 26px; }
 .card {
   background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--card-radius);
-  padding: 16px; box-shadow: 0 1px 3px rgba(11,11,11,0.08);
+  padding: 16px; box-shadow: 0 1px 2px rgba(11,11,11,0.04);
 }
-.section-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.section-title {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--grid); flex-wrap: wrap; gap: 8px;
+}
 .add-toggle {
   border: 1px dashed var(--border); background: none; color: var(--accent);
   padding: 6px 12px; border-radius: 8px; font-size: .82rem; cursor: pointer; font-weight: 600;
@@ -168,12 +182,40 @@ svg.chart { display: block; }
 .catbar-total { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; flex-wrap: wrap; gap: 4px; }
 .catbar-total .valor { font-size: 1.25rem; font-weight: 700; }
 
-.periodo-pills { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
-.periodo-pills button {
-  border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
-  padding: 5px 12px; border-radius: 999px; font-size: .8rem; cursor: pointer;
+/* ---- gastos por categoria (mosaico proporcional) ---- */
+.mosaico-wrap { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+.mosaico-grid {
+  display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px;
+  width: min(320px, 100%); flex: 0 1 auto;
 }
-.periodo-pills button.active { background: var(--accent); color: white; border-color: var(--accent); }
+.mosaico-cel {
+  aspect-ratio: 1 / 1; border-radius: 2px; cursor: pointer;
+  outline-offset: 2px;
+}
+.mosaico-cel:hover, .mosaico-cel:focus-visible { opacity: .82; outline: 2px solid var(--text-primary); }
+.mosaico-legenda { display: flex; flex-direction: column; gap: 9px; flex: 1 1 220px; min-width: 0; }
+.mosaico-legenda-item { display: flex; align-items: center; gap: 8px; font-size: .83rem; }
+.mosaico-legenda-item .dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+.mosaico-legenda-item .nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+.mosaico-legenda-item .valor { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+.mosaico-legenda-item .pct { color: var(--muted); font-size: .76rem; font-variant-numeric: tabular-nums; min-width: 32px; text-align: right; }
+.mosaico-tooltip {
+  position: fixed; display: none; pointer-events: none; z-index: 60;
+  background: var(--text-primary); color: var(--plane); font-size: .78rem;
+  padding: 6px 10px; border-radius: 7px; box-shadow: 0 4px 12px rgba(11,11,11,0.18);
+  white-space: nowrap;
+}
+.mosaico-tooltip b { font-variant-numeric: tabular-nums; }
+.mosaico-nota { font-size: .74rem; color: var(--muted); margin-top: 12px; }
+
+.periodo-pills, .view-toggle { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.periodo-pills button, .view-toggle button {
+  border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
+  padding: 5px 12px; border-radius: 999px; font-size: .76rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .03em; cursor: pointer;
+}
+.periodo-pills button.active, .view-toggle button.active { background: var(--accent); color: white; border-color: var(--accent); }
+.view-toggle { margin-bottom: 0; }
 .periodo-custom { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
 .periodo-custom > div { flex: 1 1 140px; }
 .periodo-custom label { font-size: .78rem; color: var(--text-secondary); display: block; margin-bottom: 3px; }
@@ -186,7 +228,7 @@ svg.chart { display: block; }
 .categorias-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
 .categoria-card {
   background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--card-radius);
-  padding: 14px; box-shadow: 0 1px 3px rgba(11,11,11,0.08);
+  padding: 14px; box-shadow: 0 1px 2px rgba(11,11,11,0.04);
 }
 .categoria-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .categoria-icone {
@@ -246,12 +288,13 @@ form.form-grid button { grid-column: 1 / -1; }
 .dica .texto { font-size: .9rem; line-height: 1.4; }
 .dica .texto b { color: var(--text-primary); }
 
-.tabs { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; }
+.tabs { display: flex; gap: 4px; margin-bottom: 16px; overflow-x: auto; background: var(--field-bg); padding: 4px; border-radius: 10px; width: fit-content; }
 .tabs button {
-  border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
-  padding: 7px 14px; border-radius: 999px; font-size: .85rem; cursor: pointer; white-space: nowrap;
+  border: none; background: none; color: var(--text-secondary);
+  padding: 7px 16px; border-radius: 7px; font-size: .8rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .03em; cursor: pointer; white-space: nowrap;
 }
-.tabs button.active { background: var(--accent); color: white; border-color: var(--accent); }
+.tabs button.active { background: var(--surface-1); color: var(--text-primary); box-shadow: 0 1px 2px rgba(11,11,11,0.08); }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
@@ -313,6 +356,10 @@ form.form-grid button { grid-column: 1 / -1; }
       <section class="card">
         <div class="section-title">
           <h2>Gastos por categoria</h2>
+          <div class="view-toggle" id="view-toggle">
+            <button data-view="barras" class="active">Barras</button>
+            <button data-view="mosaico">Mosaico</button>
+          </div>
         </div>
         <div class="periodo-pills" id="periodo-pills">
           <button data-periodo="mensal" class="active">Mensal</button>
@@ -445,6 +492,8 @@ form.form-grid button { grid-column: 1 / -1; }
   </div>
 </div>
 
+<div id="mosaico-tooltip" class="mosaico-tooltip"></div>
+
 <div id="modal-overlay" class="modal-overlay" onclick="fecharModalSeFora(event)">
   <div class="modal-card">
     <h2>Editar lançamento</h2>
@@ -510,6 +559,7 @@ let mesAtual = primeiroDiaMes(new Date());
 let lancamentosMes = [];
 let reservaAcumulada = 0;
 let periodoTipo = 'mensal';
+let viewTipo = 'barras';
 
 function primeiroDiaMes(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
 function fmtMesRef(d) { return d.toISOString().slice(0,10); }
@@ -792,7 +842,7 @@ function renderTiles() {
   ];
 
   const tilesHtml = tiles.map(t => `
-    <div class="tile">
+    <div class="tile ${t.cls ? 'top-'+t.cls : ''}">
       <div class="label">${t.label}</div>
       <div class="value ${t.cls||''}">${t.value}</div>
       <div class="sub">${t.sub}</div>
@@ -800,7 +850,7 @@ function renderTiles() {
   `).join('');
 
   const reservaHtml = `
-    <div class="tile">
+    <div class="tile top-good">
       <div class="label">Reserva financeira</div>
       <div class="value good">${fmtBRL(reservaAcumulada)}</div>
       <div class="sub">${subReserva}</div>
@@ -889,6 +939,14 @@ function renderCategoriasBar(lancs, inicio, fim) {
     el.innerHTML = '<div class="empty">Nenhum gasto lançado neste mês ainda.</div>';
     return;
   }
+  if (viewTipo === 'mosaico') {
+    renderCatbarMosaico(ranking, total, el);
+  } else {
+    renderCatbarBarras(ranking, total, el);
+  }
+}
+
+function renderCatbarBarras(ranking, total, el) {
   const maxVal = ranking[0][1];
   el.innerHTML = ranking.map(([nome, valor]) => {
     const meta = metaCategoria(nome);
@@ -905,6 +963,94 @@ function renderCategoriasBar(lancs, inicio, fim) {
       </div>
     `;
   }).join('');
+}
+
+// mosaico proporcional (waffle): 100 quadradinhos, cada um vale ~1% do total de saídas.
+// cada categoria recebe no mínimo 1 quadrado (fica visível mesmo sendo pequena) e o resto
+// é distribuído por maior resto (largest remainder method) pra somar exatamente 100.
+function alocarUnidadesMosaico(ranking, total, unidades) {
+  const n = ranking.length;
+  if (!total || n === 0) return ranking.map(() => 0);
+  if (n >= unidades) {
+    // mais categorias que quadrados: cada uma leva 1, ordem já é do maior gasto pro menor
+    return ranking.map((_, i) => (i < unidades ? 1 : 0));
+  }
+  const sobra = unidades - n; // depois de dar 1 pra cada categoria
+  const itens = ranking.map(([, valor]) => {
+    const exato = (valor / total) * sobra;
+    return { base: Math.floor(exato), resto: exato - Math.floor(exato) };
+  });
+  let alocado = itens.reduce((s, it) => s + it.base, 0);
+  let falta = sobra - alocado;
+  const ordemResto = itens.map((it, i) => i).sort((a, b) => itens[b].resto - itens[a].resto);
+  for (let k = 0; k < falta; k++) itens[ordemResto[k % ordemResto.length]].base += 1;
+  return itens.map(it => 1 + it.base);
+}
+
+function renderCatbarMosaico(ranking, total, el) {
+  const unidades = alocarUnidadesMosaico(ranking, total, 100);
+  let celulas = '';
+  ranking.forEach(([nome], i) => {
+    const meta = metaCategoria(nome);
+    for (let u = 0; u < unidades[i]; u++) {
+      celulas += `<div class="mosaico-cel" style="background:${meta.chip}" data-nome="${nome.replace(/"/g,'&quot;')}" tabindex="0"></div>`;
+    }
+  });
+  const legenda = ranking.map(([nome, valor]) => {
+    const meta = metaCategoria(nome);
+    const pct = total ? (valor / total * 100) : 0;
+    return `
+      <div class="mosaico-legenda-item">
+        <span class="dot" style="background:${meta.chip}"></span>
+        <span class="nome">${meta.icone} ${nome}</span>
+        <span class="pct">${pct.toFixed(0)}%</span>
+        <span class="valor">${fmtBRL(valor)}</span>
+      </div>
+    `;
+  }).join('');
+  el.innerHTML = `
+    <div class="mosaico-wrap">
+      <div class="mosaico-grid" id="mosaico-grid">${celulas}</div>
+      <div class="mosaico-legenda">${legenda}</div>
+    </div>
+    <div class="mosaico-nota">Cada quadrado representa ~1% do total de saídas do período.</div>
+  `;
+  ativarTooltipMosaico(ranking, total);
+}
+
+function ativarTooltipMosaico(ranking, total) {
+  const grid = document.getElementById('mosaico-grid');
+  const tt = document.getElementById('mosaico-tooltip');
+  const porNome = Object.fromEntries(ranking);
+  const mostrar = (cel, x, y) => {
+    const nome = cel.dataset.nome;
+    const valor = porNome[nome] || 0;
+    const pct = total ? (valor / total * 100) : 0;
+    const meta = metaCategoria(nome);
+    tt.innerHTML = '';
+    const b = document.createElement('b');
+    b.textContent = fmtBRL(valor) + ' ';
+    const span = document.createElement('span');
+    span.textContent = `· ${meta.icone} ${nome} (${pct.toFixed(0)}%)`;
+    tt.appendChild(b);
+    tt.appendChild(span);
+    tt.style.display = 'block';
+    tt.style.left = Math.min(x + 12, window.innerWidth - tt.offsetWidth - 12) + 'px';
+    tt.style.top = (y + 16) + 'px';
+  };
+  const esconder = () => { tt.style.display = 'none'; };
+  grid.addEventListener('pointermove', ev => {
+    const cel = ev.target.closest('.mosaico-cel');
+    if (cel) mostrar(cel, ev.clientX, ev.clientY);
+  });
+  grid.addEventListener('pointerleave', esconder);
+  grid.addEventListener('focusin', ev => {
+    const cel = ev.target.closest('.mosaico-cel');
+    if (!cel) return;
+    const r = cel.getBoundingClientRect();
+    mostrar(cel, r.left, r.top);
+  });
+  grid.addEventListener('focusout', esconder);
 }
 
 function renderContas() {
@@ -1162,6 +1308,16 @@ document.querySelectorAll('#periodo-pills button').forEach(btn => {
 });
 document.getElementById('periodo-de').addEventListener('change', carregarCategoriasBar);
 document.getElementById('periodo-ate').addEventListener('change', carregarCategoriasBar);
+
+// ---------- VISUALIZAÇÃO (barras / mosaico) ----------
+document.querySelectorAll('#view-toggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#view-toggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    viewTipo = btn.dataset.view;
+    carregarCategoriasBar();
+  });
+});
 
 // ---------- TABS ----------
 document.querySelectorAll('.tabs button').forEach(btn => {
