@@ -33,6 +33,12 @@
   --chip-6: #4a3aa7; /* violet  */
   --chip-7: #e34948; /* red     */
   --card-radius: 14px;
+  --sidebar-bg:      #0b0b0c;
+  --sidebar-bg-hover:#1c1c1d;
+  --sidebar-text:    #9c9a94;
+  --sidebar-border:  rgba(255,255,255,0.08);
+  --sidebar-accent:  #ffc72c;
+  --sidebar-accent-wash: rgba(255,199,44,0.12);
 }
 /* modo escuro automático desativado de propósito — o app é sempre fundo branco,
    não importa a configuração do celular/navegador */
@@ -105,20 +111,69 @@ h2 { font-size: .95rem; font-weight: 700; }
 
 /* ---- app shell ---- */
 #app { display: none; }
+.app-shell { display: flex; align-items: flex-start; min-height: 100vh; }
+
+/* ---- sidebar (nav) ---- */
+.sidebar {
+  background: var(--sidebar-bg); width: 230px; flex: 0 0 230px;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 20px 14px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.sidebar-brand {
+  display: flex; align-items: center; gap: 9px; color: #fff; font-weight: 800;
+  font-size: .95rem; padding: 4px 10px; margin-bottom: 18px; white-space: nowrap;
+}
+.sidebar-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.sidebar-nav button {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  background: none; border: none; border-left: 3px solid transparent;
+  color: var(--sidebar-text); padding: 10px 11px; border-radius: 8px;
+  font-size: .86rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.sidebar-nav button:hover { background: var(--sidebar-bg-hover); color: #fff; }
+.sidebar-nav button.active {
+  background: var(--sidebar-accent-wash); color: var(--sidebar-accent); border-left-color: var(--sidebar-accent);
+}
+.sidebar-foot { border-top: 1px solid var(--sidebar-border); padding-top: 12px; margin-top: 12px; }
+.sidebar-user { font-size: .68rem; color: var(--sidebar-text); word-break: break-all; padding: 0 10px; margin-bottom: 10px; }
+.sidebar-foot #logout-btn {
+  width: 100%; background: none; border: 1px solid var(--sidebar-border); color: var(--sidebar-text);
+  padding: 8px 11px; border-radius: 8px; cursor: pointer; font-size: .8rem; font-weight: 600;
+}
+.sidebar-foot #logout-btn:hover { border-color: var(--sidebar-accent); color: var(--sidebar-accent); }
+
+.main { flex: 1; min-width: 0; }
 header.topbar {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 20px; padding-bottom: 16px; gap: 8px; flex-wrap: wrap;
   border-bottom: 1px solid var(--grid);
 }
+#page-title { font-size: 1.15rem; }
 .month-nav { display: flex; align-items: center; gap: 8px; }
 .month-nav button {
   border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary);
   border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 1rem;
 }
 #mes-label { font-weight: 700; min-width: 130px; text-align: center; font-variant-numeric: tabular-nums; }
-#logout-btn {
-  background: none; border: 1px solid var(--border); color: var(--text-secondary);
-  padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: .85rem;
+
+@media (max-width: 760px) {
+  .app-shell { flex-direction: column; }
+  .sidebar {
+    width: 100%; flex: 0 0 auto; height: auto; flex-direction: row; align-items: center;
+    padding: 10px 12px; position: sticky; top: 0; z-index: 40; overflow-x: auto; gap: 10px;
+  }
+  .sidebar-brand { margin-bottom: 0; flex-shrink: 0; padding: 4px 6px; }
+  .sidebar-nav { flex-direction: row; flex: 0 0 auto; gap: 2px; }
+  .sidebar-nav button {
+    white-space: nowrap; border-left: none; border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0;
+  }
+  .sidebar-nav button.active { border-left-color: transparent; border-bottom-color: var(--sidebar-accent); }
+  .sidebar-foot {
+    border-top: none; margin: 0 0 0 auto; padding: 0; display: flex; align-items: center;
+    gap: 8px; flex-shrink: 0;
+  }
+  .sidebar-user { display: none; }
+  .sidebar-foot #logout-btn { width: auto; padding: 6px 10px; }
 }
 
 /* ---- tiles ---- */
@@ -277,7 +332,7 @@ form.form-grid input, form.form-grid select {
   background: var(--field-bg); color: var(--text-primary); font-size: .95rem;
 }
 form.form-grid button { grid-column: 1 / -1; }
-.form-collapse { display: none; }
+form.form-collapse { display: none; }
 .form-collapse.open { display: grid; }
 
 .dica {
@@ -288,17 +343,38 @@ form.form-grid button { grid-column: 1 / -1; }
 .dica .texto { font-size: .9rem; line-height: 1.4; }
 .dica .texto b { color: var(--text-primary); }
 
-.tabs { display: flex; gap: 4px; margin-bottom: 16px; overflow-x: auto; background: var(--field-bg); padding: 4px; border-radius: 10px; width: fit-content; }
-.tabs button {
-  border: none; background: none; color: var(--text-secondary);
-  padding: 7px 16px; border-radius: 7px; font-size: .8rem; font-weight: 600;
-  text-transform: uppercase; letter-spacing: .03em; cursor: pointer; white-space: nowrap;
-}
-.tabs button.active { background: var(--surface-1); color: var(--text-primary); box-shadow: 0 1px 2px rgba(11,11,11,0.08); }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
 .empty { color: var(--muted); font-size: .85rem; padding: 10px 0; }
+
+/* ---- investimentos ---- */
+.investimentos-grid { display: flex; flex-direction: column; gap: 12px; }
+.investimento-card {
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--card-radius);
+  padding: 14px; box-shadow: 0 1px 2px rgba(11,11,11,0.04);
+}
+.investimento-header { display: flex; align-items: center; gap: 10px; }
+.investimento-icone {
+  width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; color: white; flex-shrink: 0;
+}
+.investimento-info { flex: 1; min-width: 0; }
+.investimento-nome { font-weight: 700; font-size: .92rem; }
+.investimento-tipo { font-size: .76rem; }
+.investimento-rentab { font-weight: 700; font-size: .9rem; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.investimento-rentab .valor-atual { display: block; font-weight: 700; font-size: .95rem; color: var(--text-primary); }
+.investimento-rentab .pct.good { color: var(--good); }
+.investimento-rentab .pct.bad { color: var(--critical); }
+.investimento-valor-row {
+  display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px;
+  border-top: 1px solid var(--grid); flex-wrap: wrap;
+}
+.investimento-valor-row label { font-size: .76rem; color: var(--text-secondary); flex-shrink: 0; }
+.investimento-valor-row input {
+  flex: 1 1 120px; min-width: 0; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--field-bg); color: var(--text-primary); font-size: .88rem; font-variant-numeric: tabular-nums;
+}
 
 /* ---- modal de edição ---- */
 .modal-overlay {
@@ -329,29 +405,35 @@ form.form-grid button { grid-column: 1 / -1; }
 </div>
 
 <div id="app">
-  <div class="wrap">
-    <header class="topbar">
-      <div>
-        <h1>Controle Financeiro do Casal</h1>
-        <div class="muted" id="user-email"></div>
+  <div class="app-shell">
+    <nav class="sidebar">
+      <div class="sidebar-brand">💰 <span>Financeiro</span></div>
+      <div class="sidebar-nav">
+        <button data-tab="dashboard" class="active">📊 Dashboard</button>
+        <button data-tab="investimentos">📈 Investimentos</button>
+        <button data-tab="dicas">💡 Dicas</button>
+        <button data-tab="historico">🕒 Histórico</button>
       </div>
-      <div class="month-nav">
-        <button onclick="mudaMes(-1)">‹</button>
-        <div id="mes-label"></div>
-        <button onclick="mudaMes(1)">›</button>
+      <div class="sidebar-foot">
+        <div class="sidebar-user" id="user-email"></div>
+        <button id="logout-btn" onclick="logout()">Sair</button>
       </div>
-      <button id="logout-btn" onclick="logout()">Sair</button>
-    </header>
+    </nav>
 
-    <div class="tiles" id="tiles"></div>
+    <div class="main">
+      <div class="wrap">
+        <header class="topbar">
+          <h1 id="page-title">Dashboard</h1>
+          <div class="month-nav">
+            <button onclick="mudaMes(-1)">‹</button>
+            <div id="mes-label"></div>
+            <button onclick="mudaMes(1)">›</button>
+          </div>
+        </header>
 
-    <div class="tabs">
-      <button data-tab="dashboard" class="active">Dashboard</button>
-      <button data-tab="dicas">Dicas</button>
-      <button data-tab="historico">Histórico</button>
-    </div>
+        <div class="tiles" id="tiles"></div>
 
-    <div class="tab-panel active" id="tab-dashboard">
+        <div class="tab-panel active" id="tab-dashboard">
 
       <section class="card">
         <div class="section-title">
@@ -464,6 +546,64 @@ form.form-grid button { grid-column: 1 / -1; }
 
     </div>
 
+    <div class="tab-panel" id="tab-investimentos">
+
+      <div class="tiles" id="tiles-investimentos"></div>
+
+      <section class="card">
+        <div class="section-title">
+          <h2>Projeção de patrimônio</h2>
+        </div>
+        <p class="muted">Reserva + investimentos, projetado pros próximos 12 meses no ritmo atual de aporte (<b id="ritmo-mensal-label"></b>/mês). É uma projeção linear simples — não considera valorização ou perda dos investimentos, só o que você tende a aportar por mês.</p>
+        <div class="chart-wrap"><svg id="chart-projecao" class="chart"></svg></div>
+        <div class="legend">
+          <span><i style="background:var(--good)"></i> Hoje</span>
+          <span><i style="background:var(--chip-1)"></i> Projeção (aporte mensal)</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <h2>Meus investimentos</h2>
+          <button class="add-toggle" onclick="toggleForm('form-investimento')">+ Novo investimento</button>
+        </div>
+        <p class="muted">Cadastre cada investimento e vá atualizando o valor atual de vez em quando pra acompanhar o patrimônio de verdade.</p>
+        <form class="form-grid form-collapse" id="form-investimento" onsubmit="return novoInvestimento(event)">
+          <div class="full">
+            <label>Nome</label>
+            <input type="text" id="inv-nome" required placeholder="Ex: Tesouro Selic, Fundo XP Multi...">
+          </div>
+          <div>
+            <label>Tipo</label>
+            <select id="inv-tipo">
+              <option>Renda Fixa</option>
+              <option>Fundos</option>
+              <option>Ações</option>
+              <option>Tesouro Direto</option>
+              <option>Cripto</option>
+              <option>Imóvel</option>
+              <option>Outro</option>
+            </select>
+          </div>
+          <div>
+            <label>Valor aportado (R$)</label>
+            <input type="number" step="0.01" id="inv-aportado" required>
+          </div>
+          <div>
+            <label>Valor atual (R$)</label>
+            <input type="number" step="0.01" id="inv-atual" required>
+          </div>
+          <div class="full">
+            <label>Data do aporte</label>
+            <input type="date" id="inv-data">
+          </div>
+          <button class="btn" type="submit">Adicionar</button>
+        </form>
+        <div class="investimentos-grid" id="lista-investimentos" style="margin-top:14px;"></div>
+      </section>
+
+    </div>
+
     <div class="tab-panel" id="tab-dicas">
       <section class="card">
         <h2>Dicas da sua IA financeira</h2>
@@ -489,6 +629,8 @@ form.form-grid button { grid-column: 1 / -1; }
       </section>
     </div>
 
+      </div>
+    </div>
   </div>
 </div>
 
@@ -551,6 +693,19 @@ function metaCategoria(nome) {
   return CATEGORIA_META[nome] || { icone: '•', chip: 'var(--muted)' };
 }
 
+const INVESTIMENTO_META = {
+  'Renda Fixa':     { icone: '🏦', chip: 'var(--chip-1)' },
+  'Fundos':         { icone: '📊', chip: 'var(--chip-6)' },
+  'Ações':          { icone: '🏢', chip: 'var(--chip-2)' },
+  'Tesouro Direto': { icone: '🇧🇷', chip: 'var(--chip-3)' },
+  'Cripto':         { icone: '🪙', chip: 'var(--chip-4)' },
+  'Imóvel':         { icone: '🏘️', chip: 'var(--chip-5)' },
+  'Outro':          { icone: '💼', chip: 'var(--muted)' },
+};
+function metaInvestimento(tipo) {
+  return INVESTIMENTO_META[tipo] || INVESTIMENTO_META['Outro'];
+}
+
 let categorias = [];
 let contasFixas = [];
 let metas = null;
@@ -560,6 +715,7 @@ let lancamentosMes = [];
 let reservaAcumulada = 0;
 let periodoTipo = 'mensal';
 let viewTipo = 'barras';
+let investimentos = [];
 
 function primeiroDiaMes(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
 function fmtMesRef(d) { return d.toISOString().slice(0,10); }
@@ -624,16 +780,18 @@ async function entrarNoApp(user) {
 
 // ---------- CARGA DE DADOS ----------
 async function carregarDadosBase() {
-  const [{ data: cats }, { data: fixas }, { data: mts }, { data: hist }] = await Promise.all([
+  const [{ data: cats }, { data: fixas }, { data: mts }, { data: hist }, { data: invs }] = await Promise.all([
     sb.from('fin_categorias').select('*').order('tipo').order('ordem'),
     sb.from('fin_contas_fixas').select('*').eq('ativo', true),
     sb.from('fin_metas').select('*').order('id', { ascending: false }).limit(1),
     sb.from('fin_historico_mensal').select('*').order('mes_ref'),
+    sb.from('fin_investimentos').select('*').eq('ativo', true).order('created_at'),
   ]);
   categorias = cats || [];
   contasFixas = fixas || [];
   metas = (mts && mts[0]) || { meta_investir_mensal: 1500, meta_reserva_total: 100000 };
   historico = hist || [];
+  investimentos = invs || [];
 
   const selCat = (id, tipo) => {
     const el = document.getElementById(id);
@@ -650,6 +808,10 @@ async function carregarDadosBase() {
       .select('valor').eq('categoria_id', catReserva.id).eq('status', 'pago');
     reservaAcumulada = (aportes || []).reduce((s, l) => s + Number(l.valor), 0);
   }
+
+  renderTilesInvestimentos();
+  renderInvestimentos();
+  desenharProjecaoPatrimonio();
 }
 
 async function carregarMes() {
@@ -1128,6 +1290,182 @@ function dataInfo(l) {
   return '';
 }
 
+// ---------- INVESTIMENTOS ----------
+function totalInvestido() {
+  return investimentos.reduce((s, i) => s + Number(i.valor_atual), 0);
+}
+function totalAportado() {
+  return investimentos.reduce((s, i) => s + Number(i.valor_aportado), 0);
+}
+function patrimonioTotal() {
+  return reservaAcumulada + totalInvestido();
+}
+
+function renderTilesInvestimentos() {
+  const aportado = totalAportado();
+  const atual = totalInvestido();
+  const ganho = atual - aportado;
+  const ganhoPct = aportado ? (ganho / aportado * 100) : 0;
+  const patrimonio = patrimonioTotal();
+
+  document.getElementById('tiles-investimentos').innerHTML = `
+    <div class="tile top-good">
+      <div class="label">Patrimônio total</div>
+      <div class="value good">${fmtBRL(patrimonio)}</div>
+      <div class="sub">Reserva (${fmtBRL(reservaAcumulada)}) + investimentos (${fmtBRL(atual)})</div>
+    </div>
+    <div class="tile">
+      <div class="label">Total investido (aportado)</div>
+      <div class="value">${fmtBRL(aportado)}</div>
+      <div class="sub">${investimentos.length} investimento(s) ativo(s)</div>
+    </div>
+    <div class="tile ${ganho >= 0 ? 'top-good' : 'top-bad'}">
+      <div class="label">Rentabilidade</div>
+      <div class="value ${ganho >= 0 ? 'good' : 'bad'}">${ganho >= 0 ? '+' : ''}${fmtBRL(ganho)}</div>
+      <div class="sub">${ganhoPct >= 0 ? '+' : ''}${ganhoPct.toFixed(1)}% sobre o aportado</div>
+    </div>
+  `;
+}
+
+function renderInvestimentos() {
+  const el = document.getElementById('lista-investimentos');
+  if (!investimentos.length) {
+    el.innerHTML = '<div class="empty">Nenhum investimento cadastrado ainda.</div>';
+    return;
+  }
+  el.innerHTML = investimentos.map(inv => {
+    const meta = metaInvestimento(inv.tipo);
+    const aportado = Number(inv.valor_aportado);
+    const atual = Number(inv.valor_atual);
+    const ganho = atual - aportado;
+    const pct = aportado ? (ganho / aportado * 100) : 0;
+    return `
+      <div class="investimento-card">
+        <div class="investimento-header">
+          <div class="investimento-icone" style="background:${meta.chip}">${meta.icone}</div>
+          <div class="investimento-info">
+            <div class="investimento-nome">${inv.nome}</div>
+            <div class="investimento-tipo muted">${inv.tipo} · aportado ${fmtBRL(aportado)}</div>
+          </div>
+          <div class="investimento-rentab">
+            <span class="valor-atual">${fmtBRL(atual)}</span>
+            <span class="pct ${ganho >= 0 ? 'good' : 'bad'}">${ganho >= 0 ? '+' : ''}${pct.toFixed(1)}%</span>
+          </div>
+        </div>
+        <div class="investimento-valor-row">
+          <label>Valor atual</label>
+          <input type="number" step="0.01" value="${atual}" onchange="atualizarValorInvestimento(${inv.id}, this.value)">
+          <button class="btn-del" onclick="excluirInvestimento(${inv.id})" title="Excluir">✕</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function novoInvestimento(ev) {
+  ev.preventDefault();
+  const nome = document.getElementById('inv-nome').value.trim();
+  const tipo = document.getElementById('inv-tipo').value;
+  const valor_aportado = parseFloat(document.getElementById('inv-aportado').value);
+  const valor_atual = parseFloat(document.getElementById('inv-atual').value);
+  const data_aporte = document.getElementById('inv-data').value || null;
+  if (!nome || isNaN(valor_aportado) || isNaN(valor_atual)) return false;
+  (async () => {
+    await sb.from('fin_investimentos').insert([{ nome, tipo, valor_aportado, valor_atual, data_aporte }]);
+    document.getElementById('inv-nome').value = '';
+    document.getElementById('inv-aportado').value = '';
+    document.getElementById('inv-atual').value = '';
+    document.getElementById('inv-data').value = '';
+    document.getElementById('form-investimento').classList.remove('open');
+    await carregarDadosBase();
+  })();
+  return false;
+}
+
+async function atualizarValorInvestimento(id, novoValor) {
+  const valor = parseFloat(novoValor);
+  if (isNaN(valor)) return;
+  await sb.from('fin_investimentos').update({ valor_atual: valor }).eq('id', id);
+  await carregarDadosBase();
+}
+
+async function excluirInvestimento(id) {
+  if (!confirm('Excluir este investimento?')) return;
+  await sb.from('fin_investimentos').update({ ativo: false }).eq('id', id);
+  await carregarDadosBase();
+}
+
+// projeção linear de patrimônio: parte do total de hoje (reserva + investimentos) e soma o
+// aporte mensal da meta pra cada um dos próximos 12 meses. Não modela rentabilidade dos
+// investimentos por falta de série histórica confiável (valor_atual é um snapshot manual).
+function desenharProjecaoPatrimonio() {
+  const svg = document.getElementById('chart-projecao');
+  if (!svg) return;
+  const ritmoMensal = Number((metas && metas.meta_investir_mensal) || 0);
+  document.getElementById('ritmo-mensal-label').textContent = fmtBRL(ritmoMensal);
+
+  const meses = 12;
+  const inicio = patrimonioTotal();
+  const pontos = Array.from({ length: meses + 1 }, (_, i) => inicio + ritmoMensal * i);
+
+  const margemEsq = 52, margemBaixo = 26, margemTopo = 16;
+  const w = Math.max(620, (meses + 1) * 48);
+  const h = 210;
+  const alturaPlot = h - margemBaixo - margemTopo;
+  const topoEscala = escalaLimpa(Math.max(...pontos, 1));
+  const yDe = v => h - margemBaixo - alturaPlot * (v / topoEscala);
+  const stepX = (w - margemEsq - 16) / meses;
+  const xDe = i => margemEsq + i * stepX;
+
+  const corAccent = corTema('--good');
+  const corProjecao = corTema('--chip-1');
+  const corMuted = corTema('--muted');
+  const corGrid = corTema('--grid');
+
+  // gridlines horizontais em valores redondos, pra dar noção de magnitude sem poluir
+  let grades = '';
+  [0, 0.5, 1].forEach(frac => {
+    const v = topoEscala * frac;
+    const y = yDe(v);
+    grades += `<line x1="${margemEsq}" y1="${y}" x2="${w-8}" y2="${y}" stroke="${corGrid}" stroke-width="1"/>`;
+    grades += `<text x="${margemEsq-8}" y="${y+3}" font-size="9" fill="${corMuted}" text-anchor="end">${fmtMilhar(Math.round(v))}</text>`;
+  });
+
+  let pathD = '';
+  let marcadores = '';
+  pontos.forEach((v, i) => {
+    const x = xDe(i), y = yDe(v);
+    pathD += (i === 0 ? 'M' : 'L') + x + ',' + y + ' ';
+    const d = new Date(mesAtual); d.setMonth(d.getMonth() + i);
+    if (i === 0 || i % 3 === 0) {
+      const rotulo = i === 0 ? 'hoje' : d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+      marcadores += `<text x="${x}" y="${h-6}" font-size="9" fill="${corMuted}" text-anchor="middle">${rotulo}</text>`;
+    }
+    if (i === 0) {
+      marcadores += `<circle cx="${x}" cy="${y}" r="4.5" fill="${corAccent}" stroke="${corTema('--surface-1')}" stroke-width="2"><title>Hoje — ${fmtBRL(v)}</title></circle>`;
+    } else if (i % 3 === 0) {
+      marcadores += `<circle cx="${x}" cy="${y}" r="3.5" fill="${corProjecao}"><title>${mesTitulo(fmtMesRef(d))} (projeção) — ${fmtBRL(v)}</title></circle>`;
+    }
+  });
+  const ultimo = pontos[pontos.length - 1];
+  const areaD = `${pathD} L${xDe(meses)},${yDe(0)} L${xDe(0)},${yDe(0)} Z`;
+  marcadores += `<text x="${w-8}" y="${Math.max(yDe(ultimo)-10, 12)}" font-size="11" font-weight="700" fill="${corProjecao}" text-anchor="end">${fmtBRL(ultimo)}</text>`;
+
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.innerHTML = `${grades}
+    <path d="${areaD}" fill="${corProjecao}" fill-opacity="0.08" stroke="none"/>
+    <path d="${pathD}" fill="none" stroke="${corProjecao}" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round"/>
+    ${marcadores}`;
+}
+
+// arredonda o topo do eixo pra um número "limpo" (5k, 10k, 25k, 50k...) em vez do valor exato
+function escalaLimpa(max) {
+  const magnitude = Math.pow(10, Math.floor(Math.log10(max)));
+  const passo = [1, 2, 2.5, 5, 10].find(p => max <= p * magnitude) || 10;
+  return passo * magnitude;
+}
+
 // ---------- DICAS (regras) ----------
 function renderDicas() {
   const dicas = [];
@@ -1319,13 +1657,19 @@ document.querySelectorAll('#view-toggle button').forEach(btn => {
   });
 });
 
-// ---------- TABS ----------
-document.querySelectorAll('.tabs button').forEach(btn => {
+// ---------- NAVEGAÇÃO (sidebar) ----------
+const TITULO_TAB = { dashboard: 'Dashboard', investimentos: 'Investimentos', dicas: 'Dicas', historico: 'Histórico' };
+document.querySelectorAll('.sidebar-nav button').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.sidebar-nav button').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    document.getElementById('page-title').textContent = TITULO_TAB[btn.dataset.tab] || '';
+    // investimentos não é uma visão do mês: esconde o seletor de mês e os tiles mensais
+    const escondeMes = btn.dataset.tab === 'investimentos';
+    document.getElementById('tiles').style.display = escondeMes ? 'none' : '';
+    document.querySelector('.month-nav').style.display = escondeMes ? 'none' : '';
   });
 });
 </script>
