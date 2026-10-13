@@ -181,7 +181,7 @@ header.topbar {
 }
 
 /* ---- tiles ---- */
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 22px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(214px, 1fr)); gap: 10px; margin-bottom: 22px; }
 .tile {
   background: var(--surface-1); border: 1px solid var(--border); border-top: 3px solid var(--border);
   border-radius: var(--card-radius);
@@ -193,7 +193,7 @@ header.topbar {
   font-size: .68rem; color: var(--muted); margin-bottom: 6px;
   text-transform: uppercase; letter-spacing: .07em; font-weight: 700;
 }
-.tile .value { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.tile .value { font-size: 1.55rem; font-weight: 800; letter-spacing: -.015em; line-height: 1.15; }
 .tile .value.good { color: var(--good); }
 .tile .value.bad { color: var(--critical); }
 .tile .sub { font-size: .78rem; color: var(--text-secondary); margin-top: 4px; }
@@ -202,6 +202,51 @@ header.topbar {
 .tile .delta.ruim { color: var(--critical); }
 .tile .delta.neutro { color: var(--muted); }
 .tile .delta .delta-ref { color: var(--muted); font-weight: 400; }
+
+/* ---- tiles com medidor (recebido / pago / saldo) ---- */
+.tile-prog { display: flex; flex-direction: column; }
+.tile-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; min-height: 22px; }
+.tile-head .label { margin-bottom: 0; }
+.tile.prog-entrada { border-top-color: var(--series-entrada); }
+.tile.prog-saida { border-top-color: var(--series-saida); }
+.pct-chip {
+  font-size: .68rem; font-weight: 800; letter-spacing: .02em; padding: 2px 8px; border-radius: 999px;
+  background: var(--tile-faixa); color: var(--text-primary); font-variant-numeric: tabular-nums;
+}
+.tile.prog-entrada { --tile-cor: var(--series-entrada); }
+.tile.prog-saida { --tile-cor: var(--series-saida); }
+.tile.prog-entrada, .tile.prog-saida {
+  /* trilho = degrau mais claro do MESMO tom da barra; a barra mostra o quanto já foi, o trilho o que falta */
+  --tile-trilho: rgba(11,11,11,0.07);
+  --tile-faixa: rgba(11,11,11,0.06);
+}
+@supports (background: color-mix(in srgb, red 10%, white)) {
+  .tile.prog-entrada, .tile.prog-saida {
+    --tile-trilho: color-mix(in srgb, var(--tile-cor) 18%, var(--surface-1));
+    --tile-faixa: color-mix(in srgb, var(--tile-cor) 14%, var(--surface-1));
+  }
+}
+.meter { height: 8px; border-radius: 4px; background: var(--tile-trilho, var(--grid)); overflow: hidden; margin: 10px 0 12px; }
+.meter-fill { height: 100%; border-radius: 4px; background: var(--tile-cor, var(--good)); transition: width .35s ease; min-width: 0; }
+.tile-nota { font-size: .76rem; color: var(--muted); margin: 3px 0 12px; }
+.tile-rows { display: flex; flex-direction: column; gap: 4px; margin-top: auto; }
+.trow {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  font-size: .8rem; color: var(--text-secondary); padding: 0 2px;
+}
+.trow b { color: var(--text-primary); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.faltante {
+  display: flex; flex-direction: column; gap: 1px; margin-top: 4px;
+  padding: 9px 12px 10px; border-radius: 10px; background: var(--tile-faixa, rgba(11,11,11,0.05));
+}
+.faltante span { font-size: .66rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--text-secondary); }
+.faltante b { font-size: 1.3rem; font-weight: 800; letter-spacing: -.015em; line-height: 1.2; color: var(--text-primary); }
+.faltante.neutro { --tile-faixa: rgba(11,11,11,0.05); }
+.faltante.quitado { background: var(--accent-wash); }
+.faltante.quitado span, .faltante.quitado b { color: var(--good); }
+.faltante b.pos { color: var(--good); }
+.faltante b.neg { color: var(--critical); }
+.tile-prog .delta { margin-top: 10px; }
 
 /* ---- alertas de vencimento ---- */
 .alertas-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 26px; align-items: start; }
@@ -957,7 +1002,8 @@ function fmtMesLabel(d) {
   return d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase());
 }
 function fmtBRL(v) {
-  return (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const n = Number(v ?? 0);
+  return (isNaN(n) ? 0 : n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 // marcos da reserva: padrão, sobrescrito por fin_metas.marcos quando o Igor edita em Ajustes
 let METAS_RESERVA = [5000, 10000, 20000, 50000, 80000, 100000];
@@ -1333,34 +1379,64 @@ function renderTiles() {
   const nomeMesAnterior = new Date(mesAtual.getFullYear(), mesAtual.getMonth() - 1, 1)
     .toLocaleDateString('pt-BR', { month: 'long' });
 
-  // O número grande é o que já aconteceu (baixas dadas); o previsto do mês fica logo abaixo.
+  // O número grande é o que já aconteceu (baixas dadas). Embaixo, o total do mês e quanto
+  // ainda falta — é o que responde "quanto tenho de pagar até o fim do mês?".
   // A comparação com o mês anterior é sobre o PREVISTO — mês cheio contra mês cheio.
-  const faltaReceber = entradaTotal - entradaRecebida;
-  const faltaPagar = saidaTotal - saidaPaga;
-  const tiles = [
-    { label: 'Recebido no mês', value: fmtBRL(entradaRecebida),
-      sub: `de ${fmtBRL(entradaTotal)} previstos · falta receber ${fmtBRL(faltaReceber)}`,
-      delta: delta(entradaTotal, entradaAnt, 'subir-bom'), deltaRef: 'previsto vs.' },
-    { label: 'Pago no mês', value: fmtBRL(saidaPaga),
-      sub: `de ${fmtBRL(saidaTotal)} previstos · falta pagar ${fmtBRL(faltaPagar)}`,
-      delta: delta(saidaTotal, saidaAnt, 'subir-ruim'), deltaRef: 'previsto vs.' },
-    { label: 'Saldo em caixa', value: fmtBRL(saldoEmCaixa), cls: saldoEmCaixa >= 0 ? 'good' : 'bad',
-      sub: `Projetado até o fim do mês: ${fmtBRL(saldoProjetado)} · meta de investir ${fmtBRL(metas.meta_investir_mensal)}/mês`,
-      delta: delta(saldoProjetado, saldoAnt, 'subir-bom'), deltaRef: 'projetado vs.' },
-  ];
+  const faltaReceber = Math.max(0, entradaTotal - entradaRecebida);
+  const faltaPagar = Math.max(0, saidaTotal - saidaPaga);
 
-  const tilesHtml = tiles.map(t => `
-    <div class="tile ${t.cls ? 'top-'+t.cls : ''}">
-      <div class="label">${t.label}</div>
-      <div class="value ${t.cls||''}">${t.value}</div>
-      ${temMesAnterior && t.delta ? `<div class="delta ${t.delta.cls}">${t.delta.seta} ${t.delta.texto} <span class="delta-ref">${t.deltaRef} ${nomeMesAnterior}</span></div>` : ''}
-      <div class="sub">${t.sub}</div>
-    </div>
-  `).join('');
+  // percentual do medidor; nunca mostra 100% enquanto ainda falta algum centavo
+  const pctDe = (feito, total, falta) => {
+    if (total <= 0) return 0;
+    const p = Math.round(Math.max(0, Math.min(100, feito / total * 100)));
+    return falta > 0.005 ? Math.min(p, 99) : 100;
+  };
+  const deltaHtml = (d, ref) => temMesAnterior && d
+    ? `<div class="delta ${d.cls}">${d.seta} ${d.texto} <span class="delta-ref">${ref} ${nomeMesAnterior}</span></div>` : '';
+
+  // cartão com medidor: valor realizado + barra + total do mês + o que falta (destacado)
+  const tileProgresso = ({ classe, label, value, feito, total, falta, rotuloFalta, rotuloQuitado, d, ref }) => {
+    const pct = pctDe(feito, total, falta);
+    const quitado = total > 0 && falta <= 0.005;
+    return `
+    <div class="tile tile-prog ${classe}">
+      <div class="tile-head">
+        <div class="label">${label}</div>
+        <span class="pct-chip">${pct}%</span>
+      </div>
+      <div class="value">${value}</div>
+      <div class="meter" role="img" aria-label="${pct}% do total previsto do mês"><div class="meter-fill" style="width:${pct}%"></div></div>
+      <div class="tile-rows">
+        <div class="trow"><span>Total do mês</span><b>${fmtBRL(total)}</b></div>
+        <div class="faltante ${quitado ? 'quitado' : ''}"><span>${quitado ? rotuloQuitado : rotuloFalta}</span><b>${fmtBRL(falta)}</b></div>
+      </div>
+      ${deltaHtml(d, ref)}
+    </div>`;
+  };
+
+  const tilesHtml =
+    tileProgresso({ classe: 'prog-entrada', label: 'Recebido no mês', value: fmtBRL(entradaRecebida),
+      feito: entradaRecebida, total: entradaTotal, falta: faltaReceber,
+      rotuloFalta: 'Falta receber', rotuloQuitado: 'Tudo recebido',
+      d: delta(entradaTotal, entradaAnt, 'subir-bom'), ref: 'previsto vs.' }) +
+    tileProgresso({ classe: 'prog-saida', label: 'Pago no mês', value: fmtBRL(saidaPaga),
+      feito: saidaPaga, total: saidaTotal, falta: faltaPagar,
+      rotuloFalta: 'Falta pagar', rotuloQuitado: 'Tudo pago',
+      d: delta(saidaTotal, saidaAnt, 'subir-ruim'), ref: 'previsto vs.' }) + `
+    <div class="tile tile-prog top-${saldoEmCaixa >= 0 ? 'good' : 'bad'}">
+      <div class="tile-head"><div class="label">Saldo em caixa</div></div>
+      <div class="value ${saldoEmCaixa >= 0 ? 'good' : 'bad'}">${fmtBRL(saldoEmCaixa)}</div>
+      <div class="tile-nota">Recebido menos pago</div>
+      <div class="tile-rows">
+        <div class="trow"><span>Meta mensal</span><b>${fmtBRL(metas.meta_investir_mensal)}</b></div>
+        <div class="faltante neutro"><span>Projeção do mês</span><b class="${saldoProjetado >= 0 ? 'pos' : 'neg'}">${fmtBRL(saldoProjetado)}</b></div>
+      </div>
+      ${deltaHtml(delta(saldoProjetado, saldoAnt, 'subir-bom'), 'projetado vs.')}
+    </div>`;
 
   const reservaHtml = `
     <div class="tile top-good">
-      <div class="label">Reserva financeira</div>
+      <div class="tile-head"><div class="label">Reserva financeira</div></div>
       <div class="value good">${fmtBRL(reservaAcumulada)}</div>
       <div class="sub">${subReserva}</div>
       <div class="progress-bar"><div style="width:${pctTier}%"></div></div>
