@@ -4,27 +4,34 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Controle Financeiro do Casal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root {
   color-scheme: light;
+  /* Identidade Demanda Infinita: creme + verde, texto quase preto, cartões brancos de borda fina */
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --surface-1:  #ffffff;
-  --plane:      #ffffff;
-  --text-primary:   #0b0b0b;
-  --text-secondary: #52514e;
-  --muted:      #898781;
-  --grid:       #e4e6e1;
-  --baseline:   #c3c2b7;
-  --border:     rgba(11,11,11,0.13);
-  --field-bg:   #f5f6f4;
-  --accent:     #0ca30c;
-  --accent-wash: #e7f6e7;
+  --plane:      #F8F7F4;
+  --text-primary:   #111111;
+  --text-secondary: #4A4945;
+  --muted:      #6B6B6B;
+  --grid:       #E7E4DD;
+  --baseline:   #CFCBC1;
+  --border:     #D8D5CE;
+  --field-bg:   #F3F1EC;
+  --accent:     #008E43;
+  --accent-wash: #E3F2E9;
   --series-entrada: #2a78d6;
-  --series-saida:   #eb6834;
-  --good:      #0ca30c;
+  --series-saida:   #C2410C;
+  --good:      #008E43;
   --warning:   #fab219;
   --serious:   #ec835a;
-  --critical:  #d03b3b;
+  --critical:  #c62f2f;
   --chip-1: #2a78d6; /* blue    */
   --chip-2: #eb6834; /* orange  */
   --chip-3: #1baf7a; /* aqua    */
@@ -32,13 +39,13 @@
   --chip-5: #e87ba4; /* magenta */
   --chip-6: #4a3aa7; /* violet  */
   --chip-7: #e34948; /* red     */
-  --card-radius: 14px;
-  --sidebar-bg:      #0b0b0c;
-  --sidebar-bg-hover:#1c1c1d;
-  --sidebar-text:    #9c9a94;
+  --card-radius: 16px;
+  --sidebar-bg:      #0A0F0C;
+  --sidebar-bg-hover:#16201A;
+  --sidebar-text:    #A3ABA6;
   --sidebar-border:  rgba(255,255,255,0.08);
-  --sidebar-accent:  #ffc72c;
-  --sidebar-accent-wash: rgba(255,199,44,0.12);
+  --sidebar-accent:  #12B85E;
+  --sidebar-accent-wash: rgba(18,184,94,0.14);
 }
 /* modo escuro automático desativado de propósito — o app é sempre fundo branco,
    não importa a configuração do celular/navegador */
@@ -70,23 +77,25 @@
   --chip-7: #e66767;
 }
 * { box-sizing: border-box; }
+input, select, button, textarea { font-family: inherit; }
 .ico { width: 15px; height: 15px; flex-shrink: 0; vertical-align: -3px; }
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
   background: var(--plane);
   color: var(--text-primary);
   min-height: 100vh;
 }
 .wrap { max-width: 960px; margin: 0 auto; padding: 20px 16px 80px; }
-h1,h2,h3 { margin: 0 0 4px; }
-h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -.01em; }
-h2 { font-size: .95rem; font-weight: 700; }
+h1,h2,h3 { margin: 0 0 4px; font-family: var(--font-display); word-spacing: .1em; }
+h1 { font-size: 1.25rem; font-weight: 800; letter-spacing: -.02em; }
+h2 { font-size: 1.02rem; font-weight: 800; letter-spacing: -.01em; }
 .muted { color: var(--muted); font-size: .85rem; }
 .secondary { color: var(--text-secondary); }
 .eyebrow {
-  text-transform: uppercase; letter-spacing: .08em; font-size: .68rem; font-weight: 700;
-  color: var(--muted);
+  text-transform: uppercase; letter-spacing: .09em; font-size: .7rem; font-weight: 600;
+  color: var(--muted); font-family: var(--font-mono);
 }
 
 /* ---- login ---- */
@@ -96,9 +105,11 @@ h2 { font-size: .95rem; font-weight: 700; }
 }
 .login-card {
   background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--card-radius);
-  padding: 28px; width: 100%; max-width: 360px; text-align: center;
+  padding: 32px 28px; width: 100%; max-width: 380px; text-align: center;
   box-shadow: 0 1px 3px rgba(11,11,11,0.06);
 }
+.login-card .login-logo { width: 84px; height: 84px; border-radius: 50%; display: block; margin: 0 auto 14px; }
+.login-card .kicker { font-family: var(--font-mono); font-size: .68rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
 .login-card input {
   width: 100%; padding: 10px 12px; margin: 8px 0; border-radius: 8px;
   border: 1px solid var(--border); background: var(--field-bg); color: var(--text-primary); font-size: 1rem;
@@ -121,17 +132,19 @@ h2 { font-size: .95rem; font-weight: 700; }
   padding: 20px 14px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
 }
 .sidebar-brand {
-  display: flex; align-items: center; gap: 9px; color: #fff; font-weight: 800;
-  font-size: .95rem; padding: 4px 10px; margin-bottom: 18px; white-space: nowrap;
+  display: flex; align-items: center; gap: 11px; color: #fff;
+  padding: 4px 8px; margin-bottom: 22px; white-space: nowrap;
 }
-.sidebar-brand .brand-mark { color: var(--sidebar-accent); display: flex; }
-.sidebar-brand .brand-mark svg { width: 20px; height: 20px; }
+.sidebar-brand .brand-logo { width: 42px; height: 42px; border-radius: 50%; background: #fff; flex-shrink: 0; display: block; }
+.sidebar-brand .brand-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sidebar-brand .brand-text b { font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; letter-spacing: -.01em; line-height: 1; }
+.sidebar-brand .brand-text small { font-family: var(--font-mono); font-size: .58rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--sidebar-accent); line-height: 1; }
 .sidebar-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
 .sidebar-nav button {
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
   background: none; border: none; border-left: 3px solid transparent;
   color: var(--sidebar-text); padding: 10px 11px; border-radius: 8px;
-  font-size: .86rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  font-size: .9rem; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: var(--font-body);
 }
 .sidebar-nav button .ico { width: 17px; height: 17px; flex-shrink: 0; }
 .sidebar-nav button:hover { background: var(--sidebar-bg-hover); color: #fff; }
@@ -152,21 +165,24 @@ header.topbar {
   margin-bottom: 20px; padding-bottom: 16px; gap: 8px; flex-wrap: wrap;
   border-bottom: 1px solid var(--grid);
 }
-#page-title { font-size: 1.15rem; }
+#page-title { font-size: 1.5rem; letter-spacing: -.025em; }
 .month-nav { display: flex; align-items: center; gap: 8px; }
 .month-nav button {
   border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary);
   border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 1rem;
 }
-#mes-label { font-weight: 700; min-width: 130px; text-align: center; font-variant-numeric: tabular-nums; }
+#mes-label { font-family: var(--font-display); word-spacing: .1em; font-weight: 800; min-width: 140px; text-align: center; }
 
 @media (max-width: 760px) {
-  .app-shell { flex-direction: column; }
+  .app-shell { flex-direction: column; align-items: stretch; }
+  .main { width: 100%; }
   .sidebar {
     width: 100%; flex: 0 0 auto; height: auto; flex-direction: row; align-items: center;
     padding: 10px 12px; position: sticky; top: 0; z-index: 40; overflow-x: auto; gap: 10px;
   }
-  .sidebar-brand { margin-bottom: 0; flex-shrink: 0; padding: 4px 6px; }
+  .sidebar-brand { margin-bottom: 0; flex-shrink: 0; padding: 2px 4px; }
+  .sidebar-brand .brand-logo { width: 34px; height: 34px; }
+  .sidebar-brand .brand-text small { display: none; }
   .sidebar-nav { flex-direction: row; flex: 0 0 auto; gap: 2px; }
   .sidebar-nav button {
     white-space: nowrap; border-left: none; border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0;
@@ -181,75 +197,88 @@ header.topbar {
 }
 
 /* ---- tiles ---- */
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(214px, 1fr)); gap: 10px; margin-bottom: 22px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(228px, 1fr)); gap: 14px; margin-bottom: 26px; }
+/* 2 colunas: o 3º cartão ocupa a linha toda (sem buraco ao lado) */
+@media (min-width: 516px) and (max-width: 718px) { .tiles > .tile:nth-child(3) { grid-column: 1 / -1; } }
 .tile {
-  background: var(--surface-1); border: 1px solid var(--border); border-top: 3px solid var(--border);
-  border-radius: var(--card-radius);
-  padding: 14px 16px; box-shadow: 0 1px 2px rgba(11,11,11,0.04);
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--card-radius);
+  padding: 18px 20px 20px; box-shadow: 0 1px 2px rgba(17,17,17,0.04);
+  container-type: inline-size; /* o tamanho dos números acompanha a largura do cartão (sem estourar) */
 }
-.tile.top-good { border-top-color: var(--good); }
-.tile.top-bad { border-top-color: var(--critical); }
 .tile .label {
-  font-size: .68rem; color: var(--muted); margin-bottom: 6px;
-  text-transform: uppercase; letter-spacing: .07em; font-weight: 700;
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  font-family: var(--font-mono); font-size: .7rem; font-weight: 600; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: .09em;
 }
-.tile .value { font-size: 1.55rem; font-weight: 800; letter-spacing: -.015em; line-height: 1.15; }
+.tile .label .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--tile-cor, var(--muted)); flex-shrink: 0; }
+.tile .value {
+  font-family: var(--font-display); font-size: 1.75rem; font-size: clamp(1.45rem, 12.5cqw, 2.1rem);
+  font-weight: 800; letter-spacing: -.025em; word-spacing: .12em; line-height: 1.1; overflow-wrap: anywhere;
+}
 .tile .value.good { color: var(--good); }
 .tile .value.bad { color: var(--critical); }
-.tile .sub { font-size: .78rem; color: var(--text-secondary); margin-top: 4px; }
-.tile .delta { font-size: .76rem; font-weight: 700; margin-top: 5px; font-variant-numeric: tabular-nums; }
+.tile .sub { font-size: .85rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.4; }
+.tile .delta { font-size: .8rem; font-weight: 600; margin-top: 12px; font-variant-numeric: tabular-nums; }
 .tile .delta.bom { color: var(--good); }
 .tile .delta.ruim { color: var(--critical); }
 .tile .delta.neutro { color: var(--muted); }
-.tile .delta .delta-ref { color: var(--muted); font-weight: 400; }
+.tile .delta .delta-ref { color: var(--muted); font-weight: 500; }
 
 /* ---- tiles com medidor (recebido / pago / saldo) ---- */
 .tile-prog { display: flex; flex-direction: column; }
-.tile-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; min-height: 22px; }
-.tile-head .label { margin-bottom: 0; }
-.tile.prog-entrada { border-top-color: var(--series-entrada); }
-.tile.prog-saida { border-top-color: var(--series-saida); }
-.pct-chip {
-  font-size: .68rem; font-weight: 800; letter-spacing: .02em; padding: 2px 8px; border-radius: 999px;
-  background: var(--tile-faixa); color: var(--text-primary); font-variant-numeric: tabular-nums;
-}
+.tile-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; min-height: 24px; }
+.tile-head .label { margin-bottom: 0; min-width: 0; }
 .tile.prog-entrada { --tile-cor: var(--series-entrada); }
 .tile.prog-saida { --tile-cor: var(--series-saida); }
+.tile.saldo-pos { --tile-cor: var(--good); }
+.tile.saldo-neg { --tile-cor: var(--critical); }
+.tile.tile-reserva { --tile-cor: var(--good); }
 .tile.prog-entrada, .tile.prog-saida {
-  /* trilho = degrau mais claro do MESMO tom da barra; a barra mostra o quanto já foi, o trilho o que falta */
-  --tile-trilho: rgba(11,11,11,0.07);
-  --tile-faixa: rgba(11,11,11,0.06);
+  /* trilho = degrau mais claro do MESMO tom da barra: a barra mostra o que já foi, o trilho o que falta */
+  --tile-trilho: rgba(17,17,17,0.08);
+  --tile-faixa: rgba(17,17,17,0.06);
 }
 @supports (background: color-mix(in srgb, red 10%, white)) {
   .tile.prog-entrada, .tile.prog-saida {
-    --tile-trilho: color-mix(in srgb, var(--tile-cor) 18%, var(--surface-1));
-    --tile-faixa: color-mix(in srgb, var(--tile-cor) 14%, var(--surface-1));
+    --tile-trilho: color-mix(in srgb, var(--tile-cor) 17%, var(--surface-1));
+    --tile-faixa: color-mix(in srgb, var(--tile-cor) 11%, var(--surface-1));
   }
 }
-.meter { height: 8px; border-radius: 4px; background: var(--tile-trilho, var(--grid)); overflow: hidden; margin: 10px 0 12px; }
-.meter-fill { height: 100%; border-radius: 4px; background: var(--tile-cor, var(--good)); transition: width .35s ease; min-width: 0; }
-.tile-nota { font-size: .76rem; color: var(--muted); margin: 3px 0 12px; }
-.tile-rows { display: flex; flex-direction: column; gap: 4px; margin-top: auto; }
+.pct-chip {
+  flex-shrink: 0; font-family: var(--font-mono); font-size: .72rem; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  background: var(--tile-faixa); color: var(--text-primary);
+}
+.meter { height: 10px; border-radius: 5px; background: var(--tile-trilho, var(--grid)); overflow: hidden; margin: 14px 0 16px; }
+.meter-fill { height: 100%; border-radius: 5px; background: var(--tile-cor, var(--good)); transition: width .35s ease; }
+.tile-nota { font-size: .85rem; color: var(--muted); margin: 6px 0 16px; }
+.tile-rows { display: flex; flex-direction: column; gap: 6px; margin-top: auto; }
 .trow {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
-  font-size: .8rem; color: var(--text-secondary); padding: 0 2px;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  font-size: .9rem; color: var(--text-secondary);
 }
 .trow b { color: var(--text-primary); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .faltante {
-  display: flex; flex-direction: column; gap: 1px; margin-top: 4px;
-  padding: 9px 12px 10px; border-radius: 10px; background: var(--tile-faixa, rgba(11,11,11,0.05));
+  display: flex; flex-direction: column; gap: 3px; margin-top: 6px;
+  padding: 12px 14px 13px; border-radius: 12px; background: var(--tile-faixa, rgba(17,17,17,0.05));
 }
-.faltante span { font-size: .66rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--text-secondary); }
-.faltante b { font-size: 1.3rem; font-weight: 800; letter-spacing: -.015em; line-height: 1.2; color: var(--text-primary); }
-.faltante.neutro { --tile-faixa: rgba(11,11,11,0.05); }
+.faltante span { font-family: var(--font-mono); font-size: .68rem; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-secondary); }
+.faltante b { font-family: var(--font-display); font-size: 1.35rem; font-size: clamp(1.15rem, 9.5cqw, 1.6rem); font-weight: 800; letter-spacing: -.02em; word-spacing: .1em; line-height: 1.15; color: var(--text-primary); overflow-wrap: anywhere; }
+.faltante.neutro { --tile-faixa: rgba(17,17,17,0.05); }
 .faltante.quitado { background: var(--accent-wash); }
 .faltante.quitado span, .faltante.quitado b { color: var(--good); }
 .faltante b.pos { color: var(--good); }
 .faltante b.neg { color: var(--critical); }
-.tile-prog .delta { margin-top: 10px; }
+
+/* reserva: faixa de largura total embaixo dos três cartões */
+.tile.tile-reserva { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 16px 36px; }
+.tile-reserva .res-esq { flex: 0 1 240px; min-width: 0; }
+.tile-reserva .res-esq .label { margin-bottom: 6px; }
+.tile-reserva .res-dir { flex: 1 1 300px; min-width: 0; }
+.tile-reserva .res-dir .sub { margin: 0 0 4px; }
 
 /* ---- alertas de vencimento ---- */
-.alertas-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 26px; align-items: start; }
+.alertas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; margin-bottom: 26px; align-items: start; }
+.alertas-grid > .card-alerta { min-width: 0; }
 .alertas-grid > .card-alerta { margin-bottom: 0; }
 @media (max-width: 760px) { .alertas-grid { grid-template-columns: 1fr; } }
 .card-alerta { border-left: 3px solid var(--warning); }
@@ -264,12 +293,12 @@ header.topbar {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 8px 0; border-top: 1px solid var(--grid); flex-wrap: wrap;
 }
-.alerta-nome { font-size: .88rem; flex: 1 1 160px; min-width: 0; }
-.alerta-quando { display: block; font-size: .74rem; color: var(--muted); margin-top: 1px; }
+.alerta-nome { font-size: .92rem; flex: 1 1 160px; min-width: 0; overflow-wrap: anywhere; }
+.alerta-quando { display: block; font-size: .78rem; color: var(--muted); margin-top: 2px; }
 .alerta-quando.atrasada { color: var(--critical); font-weight: 600; }
 
-.progress-bar { height: 8px; border-radius: 4px; background: var(--grid); overflow: hidden; margin-top: 8px; }
-.progress-bar > div { height: 100%; background: var(--good); border-radius: 4px; }
+.progress-bar { height: 10px; border-radius: 5px; background: var(--accent-wash); overflow: hidden; margin-top: 10px; }
+.progress-bar > div { height: 100%; background: var(--good); border-radius: 5px; }
 
 .marcos-reserva { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .marco {
@@ -281,7 +310,7 @@ header.topbar {
 section { margin-bottom: 26px; }
 .card {
   background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--card-radius);
-  padding: 16px; box-shadow: 0 1px 2px rgba(11,11,11,0.04);
+  padding: 20px; box-shadow: 0 1px 2px rgba(17,17,17,0.04);
 }
 .section-title {
   display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
@@ -309,7 +338,7 @@ svg.chart { display: block; }
 .catbar-track { flex: 1 1 100%; order: 3; height: 10px; border-radius: 5px; background: var(--grid); overflow: hidden; }
 .catbar-fill { height: 100%; border-radius: 5px; }
 .catbar-total { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; flex-wrap: wrap; gap: 4px; }
-.catbar-total .valor { font-size: 1.25rem; font-weight: 700; }
+.catbar-total .valor { word-spacing: .1em; font-family: var(--font-display); font-size: 1.4rem; font-weight: 800; letter-spacing: -.02em; }
 
 /* ---- gastos por categoria (mosaico proporcional) ---- */
 .mosaico-wrap { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
@@ -344,14 +373,14 @@ svg.chart { display: block; }
 .pizza-fatia { transition: opacity .15s; cursor: pointer; }
 .pizza-fatia:hover, .pizza-fatia:focus-visible { opacity: .82; outline: none; }
 .pizza-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; text-align: center; }
-.pizza-center-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-.pizza-center-valor { font-size: 1.02rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pizza-center-label { font-family: var(--font-mono); font-size: .62rem; font-weight: 600; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.pizza-center-valor { font-family: var(--font-display); font-size: 1.05rem; font-weight: 800; }
 
 .periodo-pills, .view-toggle { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
 .periodo-pills button, .view-toggle button {
   border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
-  padding: 5px 12px; border-radius: 999px; font-size: .76rem; font-weight: 600;
-  text-transform: uppercase; letter-spacing: .03em; cursor: pointer;
+  padding: 6px 13px; border-radius: 999px; font-size: .7rem; font-weight: 600; font-family: var(--font-mono);
+  text-transform: uppercase; letter-spacing: .06em; cursor: pointer;
 }
 .periodo-pills button.active, .view-toggle button.active { background: var(--accent); color: white; border-color: var(--accent); }
 .view-toggle { margin-bottom: 0; }
@@ -375,7 +404,7 @@ svg.chart { display: block; }
   flex-shrink: 0; color: white;
 }
 .categoria-icone .ico { width: 16px; height: 16px; vertical-align: 0; }
-.categoria-nome { font-weight: 700; font-size: .9rem; flex: 1; }
+.categoria-nome { font-family: var(--font-display); font-weight: 800; font-size: .95rem; flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .categoria-subtotal { font-size: .82rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
 
 .conta-row {
@@ -383,7 +412,7 @@ svg.chart { display: block; }
   padding: 8px 0; border-bottom: 1px solid var(--grid);
 }
 .conta-row:last-child { border-bottom: none; }
-.conta-nome { font-size: .88rem; flex: 1 1 140px; min-width: 0; }
+.conta-nome { font-size: .92rem; flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; }
 .conta-nome .pill {
   font-size: .65rem; padding: 1px 6px; border-radius: 999px; margin-left: 6px;
   background: var(--grid); color: var(--text-secondary);
@@ -400,12 +429,12 @@ svg.chart { display: block; }
 }
 .resumo-retro b { color: var(--text-primary); }
 .resumo-retro .retro-valor { color: var(--critical); }
-.conta-valor { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; font-size: .88rem; }
+.conta-valor { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; font-size: .92rem; }
 .conta-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; margin-left: auto; }
 .btn-baixa {
   display: inline-flex; align-items: center; gap: 4px;
   border: 1px solid var(--good); color: var(--good); background: none; border-radius: 6px;
-  padding: 3px 9px; font-size: .74rem; cursor: pointer; white-space: nowrap;
+  padding: 4px 10px; font-size: .76rem; font-weight: 600; font-family: var(--font-body); cursor: pointer; white-space: nowrap;
 }
 .btn-baixa .ico { width: 12px; height: 12px; vertical-align: 0; }
 .btn-baixa.pago { background: var(--good); color: white; border-color: var(--good); }
@@ -434,7 +463,7 @@ form.form-collapse { display: none; }
 .dica .icone.good { color: var(--good); }
 .dica .icone.warning { color: var(--warning); }
 .dica .icone.critical { color: var(--critical); }
-.dica .texto { font-size: .9rem; line-height: 1.4; }
+.dica .texto { font-size: .92rem; line-height: 1.45; min-width: 0; overflow-wrap: anywhere; }
 .dica .texto b { color: var(--text-primary); }
 
 .tab-panel { display: none; }
@@ -455,9 +484,9 @@ form.form-collapse { display: none; }
 }
 .investimento-icone .ico { width: 18px; height: 18px; vertical-align: 0; }
 .investimento-info { flex: 1; min-width: 0; }
-.investimento-nome { font-weight: 700; font-size: .92rem; }
+.investimento-nome { font-family: var(--font-display); font-weight: 800; font-size: .98rem; overflow-wrap: anywhere; }
 .investimento-tipo { font-size: .76rem; }
-.investimento-rentab { font-weight: 700; font-size: .9rem; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.investimento-rentab { font-weight: 700; font-size: .9rem; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; flex-shrink: 0; }
 .investimento-rentab .valor-atual { display: block; font-weight: 700; font-size: .95rem; color: var(--text-primary); }
 .investimento-rentab .pct.good { color: var(--good); }
 .investimento-rentab .pct.bad { color: var(--critical); }
@@ -478,8 +507,8 @@ form.form-collapse { display: none; }
 }
 .ajuste-row:last-of-type { border-bottom: none; }
 .ajuste-head {
-  font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
-  font-weight: 700; border-bottom: 1px solid var(--grid); padding-bottom: 6px;
+  font-family: var(--font-mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+  font-weight: 600; border-bottom: 1px solid var(--grid); padding-bottom: 6px;
 }
 .ajuste-row input, .ajuste-row select {
   width: 100%; min-width: 0; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border);
@@ -506,13 +535,15 @@ form.form-collapse { display: none; }
   width: 100%; max-width: 380px; box-shadow: 0 8px 24px rgba(11,11,11,0.18);
 }
 .btn-secondary { background: var(--field-bg) !important; color: var(--text-primary) !important; }
-.data-venc { color: var(--muted); font-size: .74rem; display: block; margin-top: 1px; }
+.data-venc { color: var(--muted); font-size: .76rem; display: block; margin-top: 2px; }
 </style>
 </head>
 <body>
 
 <div id="login-screen">
   <div class="login-card">
+    <img class="login-logo" src="logo-di.png" alt="Demanda Infinita">
+    <div class="kicker">Demanda Infinita</div>
     <h1>Controle Financeiro do Casal</h1>
     <p class="muted">Faça login para continuar</p>
     <input type="email" id="login-email" placeholder="e-mail" autocomplete="username">
@@ -526,10 +557,8 @@ form.form-collapse { display: none; }
   <div class="app-shell">
     <nav class="sidebar">
       <div class="sidebar-brand">
-        <span class="brand-mark">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M16 7h5v5"/></svg>
-        </span>
-        <span>Financeiro</span>
+        <img class="brand-logo" src="logo-di.png" alt="Demanda Infinita">
+        <div class="brand-text"><b>Financeiro</b><small>Demanda Infinita</small></div>
       </div>
       <div class="sidebar-nav">
         <button data-tab="dashboard" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>Dashboard</button>
@@ -1401,7 +1430,7 @@ function renderTiles() {
     return `
     <div class="tile tile-prog ${classe}">
       <div class="tile-head">
-        <div class="label">${label}</div>
+        <div class="label"><i class="dot"></i>${label}</div>
         <span class="pct-chip">${pct}%</span>
       </div>
       <div class="value">${value}</div>
@@ -1423,8 +1452,8 @@ function renderTiles() {
       feito: saidaPaga, total: saidaTotal, falta: faltaPagar,
       rotuloFalta: 'Falta pagar', rotuloQuitado: 'Tudo pago',
       d: delta(saidaTotal, saidaAnt, 'subir-ruim'), ref: 'previsto vs.' }) + `
-    <div class="tile tile-prog top-${saldoEmCaixa >= 0 ? 'good' : 'bad'}">
-      <div class="tile-head"><div class="label">Saldo em caixa</div></div>
+    <div class="tile tile-prog saldo-${saldoEmCaixa >= 0 ? 'pos' : 'neg'}">
+      <div class="tile-head"><div class="label"><i class="dot"></i>Saldo em caixa</div></div>
       <div class="value ${saldoEmCaixa >= 0 ? 'good' : 'bad'}">${fmtBRL(saldoEmCaixa)}</div>
       <div class="tile-nota">Recebido menos pago</div>
       <div class="tile-rows">
@@ -1435,13 +1464,17 @@ function renderTiles() {
     </div>`;
 
   const reservaHtml = `
-    <div class="tile top-good">
-      <div class="tile-head"><div class="label">Reserva financeira</div></div>
-      <div class="value good">${fmtBRL(reservaAcumulada)}</div>
-      <div class="sub">${subReserva}</div>
-      <div class="progress-bar"><div style="width:${pctTier}%"></div></div>
-      <div class="marcos-reserva">
-        ${METAS_RESERVA.map(m => `<span class="marco ${reservaAcumulada >= m ? 'atingido' : ''}">${fmtMilhar(m)}</span>`).join('')}
+    <div class="tile tile-reserva">
+      <div class="res-esq">
+        <div class="label"><i class="dot"></i>Reserva financeira</div>
+        <div class="value good">${fmtBRL(reservaAcumulada)}</div>
+      </div>
+      <div class="res-dir">
+        <div class="sub">${subReserva}</div>
+        <div class="progress-bar"><div style="width:${pctTier}%"></div></div>
+        <div class="marcos-reserva">
+          ${METAS_RESERVA.map(m => `<span class="marco ${reservaAcumulada >= m ? 'atingido' : ''}">${fmtMilhar(m)}</span>`).join('')}
+        </div>
       </div>
     </div>
   `;
@@ -2153,7 +2186,9 @@ function desenharProjecaoPatrimonio() {
   });
 
   const margemEsq = 52, margemBaixo = 26, margemTopo = 20;
-  const w = Math.max(620, (meses + 1) * 48);
+  // ocupa a largura do cartão quando ele é maior que o mínimo (aba escondida mede 0 → cai no mínimo e redesenha ao abrir)
+  const caixaProj = svg.closest('.chart-wrap');
+  const w = Math.max(620, (meses + 1) * 48, caixaProj ? caixaProj.clientWidth : 0);
   const h = 210;
   const alturaPlot = h - margemBaixo - margemTopo;
   const todos = [...passado, ...futuro];
@@ -2177,7 +2212,7 @@ function desenharProjecaoPatrimonio() {
     const v = topoEscala * frac;
     const y = yDe(v);
     grades += `<line x1="${margemEsq}" y1="${y}" x2="${w-8}" y2="${y}" stroke="${corGrid}" stroke-width="1"/>`;
-    grades += `<text x="${margemEsq-8}" y="${y+3}" font-size="9" fill="${corMuted}" text-anchor="end">${fmtMilhar(Math.round(v))}</text>`;
+    grades += `<text x="${margemEsq-8}" y="${y+3}" font-size="11" fill="${corMuted}" text-anchor="end">${fmtMilhar(Math.round(v))}</text>`;
   });
 
   const caminho = pts => pts.map((p, i) => (i === 0 ? 'M' : 'L') + xDe(p.data) + ',' + yDe(p.valor)).join(' ');
@@ -2207,11 +2242,12 @@ function desenharProjecaoPatrimonio() {
   // rótulos do eixo x: começo da série, hoje, e o fim da projeção
   const mesAno = d => d.slice(5, 7) + '/' + d.slice(2, 4);
   const rotulos = [];
-  if (passado.length >= 2) rotulos.push({ data: passado[0].data, txt: mesAno(passado[0].data) });
+  // o rótulo do começo da série só aparece se houver espaço pro "hoje" (senão um escreve em cima do outro)
+  if (passado.length >= 2 && xDe(futuro[0].data) - xDe(passado[0].data) > 64) rotulos.push({ data: passado[0].data, txt: mesAno(passado[0].data) });
   rotulos.push({ data: futuro[0].data, txt: 'hoje' });
   [3, 6, 9, 12].forEach(i => rotulos.push({ data: futuro[i].data, txt: mesAno(futuro[i].data) }));
   rotulos.forEach(r => {
-    marcadores += `<text x="${xDe(r.data)}" y="${h-6}" font-size="9" fill="${corMuted}" text-anchor="middle">${r.txt}</text>`;
+    marcadores += `<text x="${xDe(r.data)}" y="${h-6}" font-size="11" fill="${corMuted}" text-anchor="middle">${r.txt}</text>`;
   });
 
   const ultimo = futuro[futuro.length - 1].valor;
@@ -2325,6 +2361,12 @@ function renderHistorico() {
   desenharBarrasSaldo(serie);
 }
 
+// gráfico mais largo que o cartão rola por dentro dele; começa mostrando o mês mais recente
+function rolarAteOFim(svg) {
+  const caixa = svg.closest('.chart-wrap');
+  if (caixa) caixa.scrollLeft = caixa.scrollWidth;
+}
+
 function corTema(varName) {
   return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
 }
@@ -2351,12 +2393,13 @@ function desenharBarrasDuplas(serie) {
     bars += `<rect x="${x0+barW+2}" y="${h-24-ySd}" width="${barW}" height="${ySd}" rx="3" fill="${corSaida}">
       <title>${mesTitulo(s.mes)} — Saída: ${fmtBRL(s.saida)}</title></rect>`;
     if (i % 2 === 0 || serie.length < 14) {
-      bars += `<text x="${x0+barW}" y="${h-6}" font-size="9" fill="${corMuted}" text-anchor="middle">${mesCurto(s.mes)}</text>`;
+      bars += `<text x="${x0+barW}" y="${h-6}" font-size="11" fill="${corMuted}" text-anchor="middle">${mesCurto(s.mes)}</text>`;
     }
   });
   svg.setAttribute('width', w);
   svg.setAttribute('height', h);
   svg.innerHTML = `<line x1="0" y1="${h-24}" x2="${w}" y2="${h-24}" stroke="${corGrid}" stroke-width="1"/>${bars}`;
+  rolarAteOFim(svg);
 }
 
 function desenharBarrasSaldo(serie) {
@@ -2382,12 +2425,13 @@ function desenharBarrasSaldo(serie) {
     bars += `<rect x="${x0}" y="${y}" width="${barW}" height="${alt}" rx="3" fill="${cor}">
       <title>${mesTitulo(s.mes)} — Saldo: ${fmtBRL(s.saldo)}</title></rect>`;
     if (i % 2 === 0 || serie.length < 14) {
-      bars += `<text x="${x0+barW/2}" y="${h-4}" font-size="9" fill="${corMuted}" text-anchor="middle">${mesCurto(s.mes)}</text>`;
+      bars += `<text x="${x0+barW/2}" y="${h-4}" font-size="11" fill="${corMuted}" text-anchor="middle">${mesCurto(s.mes)}</text>`;
     }
   });
   svg.setAttribute('width', w);
   svg.setAttribute('height', h);
   svg.innerHTML = `<line x1="0" y1="${meio}" x2="${w}" y2="${meio}" stroke="${corBaseline}" stroke-width="1"/>${bars}`;
+  rolarAteOFim(svg);
 }
 
 function mesCurto(mesRef) {
@@ -2438,6 +2482,8 @@ document.querySelectorAll('.sidebar-nav button').forEach(btn => {
     document.getElementById('page-title').textContent = TITULO_TAB[btn.dataset.tab] || '';
     // investimentos e ajustes não são visões do mês: escondem o seletor de mês e os tiles mensais
     const escondeMes = btn.dataset.tab === 'investimentos' || btn.dataset.tab === 'ajustes';
+    if (btn.dataset.tab === 'investimentos') desenharProjecaoPatrimonio();
+    if (btn.dataset.tab === 'historico') ['chart-eh', 'chart-saldo'].forEach(id => rolarAteOFim(document.getElementById(id)));
     document.getElementById('tiles').style.display = escondeMes ? 'none' : '';
     document.querySelector('.month-nav').style.display = escondeMes ? 'none' : '';
   });
