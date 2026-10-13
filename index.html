@@ -911,11 +911,42 @@ let contasFixasTodas = [];
 let aportesReserva = [];
 
 function primeiroDiaMes(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
-function fmtMesRef(d) { return d.toISOString().slice(0,10); }
+// Datas SEMPRE pelo calendário local. O formato ISO nativo do JS converte pra UTC e, à noite
+// no Brasil, vira o dia seguinte — uma baixa dada às 22h gravaria a data de amanhã.
+function fmtISO(d) {
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function hojeISO() { return fmtISO(new Date()); }
+function fmtMesRef(d) { return fmtISO(d); }
 function dataDoVencimento(mesRefDate, dia) {
   const ultimoDia = new Date(mesRefDate.getFullYear(), mesRefDate.getMonth() + 1, 0).getDate();
   const d = new Date(mesRefDate.getFullYear(), mesRefDate.getMonth(), Math.min(dia, ultimoDia));
   return fmtMesRef(d);
+}
+// mesma data daqui a N meses; dia 31 em mês curto cai no último dia (e não pula pro mês seguinte)
+function somarMeses(d, n) {
+  const ultimoDia = new Date(d.getFullYear(), d.getMonth() + n + 1, 0).getDate();
+  return new Date(d.getFullYear(), d.getMonth() + n, Math.min(d.getDate(), ultimoDia));
+}
+// texto digitado pelo usuário vai pra dentro de innerHTML: escapar, senão "<" ou aspas quebram a tela
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+// toda gravação passa por aqui: se o banco recusar, o usuário fica sabendo (antes falhava calado)
+function gravou(res, acao) {
+  if (res && res.error) {
+    alert(`Não consegui ${acao}: ${res.error.message}`);
+    return false;
+  }
+  return true;
+}
+// trava duplo clique em formulário (dois envios = dois lançamentos iguais)
+const enviando = new Set();
+async function umEnvioPorVez(chave, fn) {
+  if (enviando.has(chave)) return;
+  enviando.add(chave);
+  try { await fn(); } finally { enviando.delete(chave); }
 }
 function fmtDataCurta(dataStr) {
   if (!dataStr) return '';
@@ -996,7 +1027,7 @@ async function carregarDadosBase() {
   const selCat = (id, tipo) => {
     const el = document.getElementById(id);
     el.innerHTML = categorias.filter(c => c.tipo === tipo)
-      .map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+      .map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
   };
   selCat('desp-categoria', 'saida');
   selCat('ent-categoria', 'entrada');
@@ -1041,7 +1072,11 @@ async function carregarMes() {
   // upsert com ignoreDuplicates: se dois carregamentos disputarem a mesma inserção,
   // o banco (constraint única mes_ref+conta_fixa_id) garante que só uma sobrevive.
   const idsFixasNoMes = new Set(lancs.filter(l => l.conta_fixa_id).map(l => l.conta_fixa_id));
-  const faltando = contasFixas.filter(cf => !idsFixasNoMes.has(cf.id));
+  // só mês corrente e futuros ganham as contas fixas sozinhas. Mês passado que ninguém lançou
+  // fica vazio (o histórico importado cobre esses meses) — gerar ali criava contas pendentes
+  // fantasma que inflavam os totais por período e sobrescreviam o gráfico do Histórico.
+  const geraContas = mes >= primeiroDiaMes(new Date());
+  const faltando = geraContas ? contasFixas.filter(cf => !idsFixasNoMes.has(cf.id)) : [];
   if (faltando.length) {
     const novos = faltando.map(cf => ({
       tipo: 'saida', categoria_id: cf.categoria_id, conta_fixa_id: cf.id,
@@ -1085,15 +1120,14 @@ function mudaMes(delta) {
 // ---------- AÇÕES ----------
 async function darBaixa(id, statusAtual) {
   const novoStatus = statusAtual === 'pago' ? 'pendente' : 'pago';
-  const dataPago = novoStatus === 'pago' ? new Date().toISOString().slice(0,10) : null;
+  const dataPago = novoStatus === 'pago' ? hojeISO() : null;
   const patch = { status: novoStatus, data_pago: dataPago };
   // despagar um aporte desfaz a alocação: o dinheiro volta a não estar em investimento nenhum
   if (novoStatus === 'pendente') patch.investimento_id = null;
   // atualiza a tela na hora (topo e baixo juntos); o banco confirma logo em seguida
   const l = lancamentosMes.find(x => x.id === id);
   if (l) { Object.assign(l, patch); renderMes(); }
-  const { error } = await sb.from('fin_lancamentos').update(patch).eq('id', id);
-  if (error) alert('Não consegui salvar a baixa: ' + error.message);
+  gravou(await sb.from('fin_lancamentos').update(patch).eq('id', id), 'salvar a baixa');
   await carregarDadosBase();
   await carregarMes();
   if (novoStatus === 'pago' && ehAporteReserva(id)) abrirModalAporte(id);
@@ -1117,7 +1151,7 @@ function abrirModalAporte(lancamentoId) {
   document.getElementById('aporte-valor-label').textContent =
     `${l.descricao} — ${fmtBRL(l.valor)}. Alocar num investimento move esse valor da reserva pro patrimônio investido.`;
   document.getElementById('aporte-destino').innerHTML = investimentos
-    .map(i => `<option value="${i.id}">${i.nome} — ${i.tipo}</option>`).join('');
+    .map(i => `<option value="${i.id}">${esc(i.nome)} — ${esc(i.tipo)}</option>`).join('');
   document.getElementById('modal-aporte').classList.add('open');
 }
 
@@ -1139,10 +1173,12 @@ function confirmarAlocacaoAporte(ev) {
     if (inv) {
       const novoAportado = Number(inv.valor_aportado) + Number(l.valor);
       const novoAtual = Number(inv.valor_atual) + Number(l.valor);
-      await sb.from('fin_investimentos')
-        .update({ valor_aportado: novoAportado, valor_atual: novoAtual }).eq('id', investimentoId);
-      await registrarValorInvestimento(investimentoId, novoAtual);
-      await sb.from('fin_lancamentos').update({ investimento_id: investimentoId }).eq('id', l.id);
+      // se o investimento não atualizar, não marca o aporte como alocado (senão o dinheiro some do total)
+      if (gravou(await sb.from('fin_investimentos')
+        .update({ valor_aportado: novoAportado, valor_atual: novoAtual }).eq('id', investimentoId), 'atualizar o investimento')) {
+        await registrarValorInvestimento(investimentoId, novoAtual);
+        gravou(await sb.from('fin_lancamentos').update({ investimento_id: investimentoId }).eq('id', l.id), 'registrar a alocação do aporte');
+      }
     }
     fecharModalAporte();
     await carregarDadosBase();
@@ -1157,9 +1193,9 @@ async function excluirLancamento(id) {
   if (l && l.conta_fixa_id) {
     // conta fixa: exclusão "suave" (status='removido') — um delete de verdade seria
     // recriado automaticamente no próximo carregamento, já que a conta fixa segue ativa
-    await sb.from('fin_lancamentos').update({ status: 'removido' }).eq('id', id);
+    gravou(await sb.from('fin_lancamentos').update({ status: 'removido' }).eq('id', id), 'excluir');
   } else {
-    await sb.from('fin_lancamentos').delete().eq('id', id);
+    gravou(await sb.from('fin_lancamentos').delete().eq('id', id), 'excluir');
   }
   await carregarDadosBase();
   await carregarMes();
@@ -1174,12 +1210,13 @@ function novaDespesaAvulsa(ev) {
   const data_vencimento = document.getElementById('desp-vencimento').value || null;
   const retroativo = document.getElementById('desp-retroativo').checked;
   if (!desc || !valor) return false;
-  (async () => {
-    const dataPago = status === 'pago' ? new Date().toISOString().slice(0,10) : null;
-    await sb.from('fin_lancamentos').insert([{
+  umEnvioPorVez('despesa', async () => {
+    const dataPago = status === 'pago' ? hojeISO() : null;
+    const ok = gravou(await sb.from('fin_lancamentos').insert([{
       tipo: 'saida', categoria_id, descricao: desc, valor, data_vencimento, retroativo,
       mes_ref: fmtMesRef(mesAtual), status, data_pago: dataPago,
-    }]);
+    }]), 'lançar a despesa');
+    if (!ok) return; // mantém o que foi digitado
     document.getElementById('desp-desc').value = '';
     document.getElementById('desp-valor').value = '';
     document.getElementById('desp-vencimento').value = '';
@@ -1188,7 +1225,7 @@ function novaDespesaAvulsa(ev) {
     document.getElementById('form-despesa').classList.remove('open');
     await carregarDadosBase();
     await carregarMes();
-  })();
+  });
   return false;
 }
 
@@ -1201,12 +1238,13 @@ function novaEntrada(ev) {
   const data_vencimento = document.getElementById('ent-vencimento').value || null;
   const retroativo = document.getElementById('ent-retroativo').checked;
   if (!desc || !valor) return false;
-  (async () => {
-    const dataPago = status === 'pago' ? new Date().toISOString().slice(0,10) : null;
-    await sb.from('fin_lancamentos').insert([{
+  umEnvioPorVez('entrada', async () => {
+    const dataPago = status === 'pago' ? hojeISO() : null;
+    const ok = gravou(await sb.from('fin_lancamentos').insert([{
       tipo: 'entrada', categoria_id, descricao: desc, valor, data_vencimento, retroativo,
       mes_ref: fmtMesRef(mesAtual), status, data_pago: dataPago,
-    }]);
+    }]), 'lançar a entrada');
+    if (!ok) return;
     document.getElementById('ent-desc').value = '';
     document.getElementById('ent-valor').value = '';
     document.getElementById('ent-vencimento').value = '';
@@ -1214,7 +1252,7 @@ function novaEntrada(ev) {
     document.getElementById('form-entrada').classList.remove('open');
     await carregarDadosBase();
     await carregarMes();
-  })();
+  });
   return false;
 }
 
@@ -1227,7 +1265,7 @@ function abrirEdicao(id) {
   document.getElementById('edit-valor').value = l.valor;
   const sel = document.getElementById('edit-categoria');
   sel.innerHTML = categorias.filter(c => c.tipo === l.tipo)
-    .map(c => `<option value="${c.id}" ${c.id === l.categoria_id ? 'selected' : ''}>${c.nome}</option>`).join('');
+    .map(c => `<option value="${c.id}" ${c.id === l.categoria_id ? 'selected' : ''}>${esc(c.nome)}</option>`).join('');
   document.getElementById('edit-vencimento').value = l.data_vencimento || '';
   document.getElementById('edit-retroativo').checked = !!l.retroativo;
   const pagoWrap = document.getElementById('edit-pago-wrap');
@@ -1258,12 +1296,13 @@ function salvarEdicao(ev) {
   if (document.getElementById('edit-pago-wrap').style.display !== 'none') {
     patch.data_pago = document.getElementById('edit-pago').value || null;
   }
-  (async () => {
-    await sb.from('fin_lancamentos').update(patch).eq('id', id);
+  if (!patch.descricao || isNaN(patch.valor) || isNaN(patch.categoria_id)) return false;
+  umEnvioPorVez('edicao', async () => {
+    if (!gravou(await sb.from('fin_lancamentos').update(patch).eq('id', id), 'salvar a edição')) return;
     fecharModal();
     await carregarDadosBase();
     await carregarMes();
-  })();
+  });
   return false;
 }
 
@@ -1364,7 +1403,7 @@ function renderAlertas() {
 }
 
 function blocoContasPendentes(tipo, titulo, palavraAtraso, textoBotao) {
-  const hojeStr = new Date().toISOString().slice(0, 10);
+  const hojeStr = hojeISO();
 
   const pendentes = lancamentosMes.filter(l => l.tipo === tipo && l.status === 'pendente');
   const atrasadas = pendentes.filter(l => l.data_vencimento && l.data_vencimento < hojeStr)
@@ -1390,7 +1429,7 @@ function blocoContasPendentes(tipo, titulo, palavraAtraso, textoBotao) {
     }
     return `
       <div class="alerta-row">
-        <div class="alerta-nome">${l.descricao}<span class="alerta-quando ${atrasada ? 'atrasada' : ''}">${quando}</span></div>
+        <div class="alerta-nome">${esc(l.descricao)}<span class="alerta-quando ${atrasada ? 'atrasada' : ''}">${quando}</span></div>
         <div class="conta-actions">
           <div class="conta-valor">${fmtBRL(l.valor)}</div>
           <button class="btn-baixa" onclick="darBaixa(${l.id}, 'pendente')">${textoBotao}</button>
@@ -1515,7 +1554,7 @@ function renderCatbarBarras(ranking, total, el) {
       <div class="catbar-row">
         <div class="catbar-label">
           <span class="catbar-dot" style="background:${meta.chip}"></span>
-          <span class="catbar-nome">${nome}</span>
+          <span class="catbar-nome">${esc(nome)}</span>
         </div>
         <div class="catbar-value">${fmtBRL(valor)} · ${pctTotal.toFixed(0)}%</div>
         <div class="catbar-track"><div class="catbar-fill" style="width:${larguraBarra}%; background:${meta.chip}"></div></div>
@@ -1552,7 +1591,7 @@ function renderCatbarMosaico(ranking, total, el) {
   ranking.forEach(([nome], i) => {
     const meta = metaCategoria(nome);
     for (let u = 0; u < unidades[i]; u++) {
-      celulas += `<div class="mosaico-cel" style="background:${meta.chip}" data-nome="${nome.replace(/"/g,'&quot;')}" tabindex="0"></div>`;
+      celulas += `<div class="mosaico-cel" style="background:${meta.chip}" data-nome="${esc(nome)}" tabindex="0"></div>`;
     }
   });
   const legenda = ranking.map(([nome, valor]) => {
@@ -1561,7 +1600,7 @@ function renderCatbarMosaico(ranking, total, el) {
     return `
       <div class="mosaico-legenda-item">
         <span class="dot" style="background:${meta.chip}"></span>
-        <span class="nome">${nome}</span>
+        <span class="nome">${esc(nome)}</span>
         <span class="pct">${pct.toFixed(0)}%</span>
         <span class="valor">${fmtBRL(valor)}</span>
       </div>
@@ -1624,7 +1663,7 @@ function renderCatbarPizza(ranking, total, el) {
     const dash = pct * circ;
     const dashoffset = -acumulado;
     acumulado += dash;
-    return `<circle class="pizza-fatia" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${meta.chip}" stroke-width="${strokeW}" stroke-dasharray="${dash} ${circ - dash}" stroke-dashoffset="${dashoffset}" data-nome="${nome.replace(/"/g,'&quot;')}" tabindex="0"></circle>`;
+    return `<circle class="pizza-fatia" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${meta.chip}" stroke-width="${strokeW}" stroke-dasharray="${dash} ${circ - dash}" stroke-dashoffset="${dashoffset}" data-nome="${esc(nome)}" tabindex="0"></circle>`;
   }).join('');
   const legenda = ranking.map(([nome, valor]) => {
     const meta = metaCategoria(nome);
@@ -1632,7 +1671,7 @@ function renderCatbarPizza(ranking, total, el) {
     return `
       <div class="mosaico-legenda-item">
         <span class="dot" style="background:${meta.chip}"></span>
-        <span class="nome">${nome}</span>
+        <span class="nome">${esc(nome)}</span>
         <span class="pct">${pct.toFixed(0)}%</span>
         <span class="valor">${fmtBRL(valor)}</span>
       </div>
@@ -1700,7 +1739,10 @@ function renderContas() {
   });
   const nomes = Object.keys(porCategoria).sort();
   if (!nomes.length) {
-    document.getElementById('lista-contas').innerHTML = '<div class="empty">Nenhuma conta neste mês ainda.</div>';
+    const passado = mesAtual < primeiroDiaMes(new Date());
+    document.getElementById('lista-contas').innerHTML = passado
+      ? '<div class="empty">Mês anterior sem lançamentos detalhados. Use "+ Despesa avulsa" (com a opção retroativa) pra lançar o que faltou.</div>'
+      : '<div class="empty">Nenhuma conta neste mês ainda.</div>';
     return;
   }
   document.getElementById('lista-contas').innerHTML = nomes.map(nome => {
@@ -1711,12 +1753,12 @@ function renderContas() {
       <div class="categoria-card">
         <div class="categoria-header">
           <div class="categoria-icone" style="background:${meta.chip}">${svgIcone(meta.icone)}</div>
-          <div class="categoria-nome">${nome}</div>
+          <div class="categoria-nome">${esc(nome)}</div>
           <div class="categoria-subtotal">${fmtBRL(subtotal)}</div>
         </div>
         ${itens.map(l => `
           <div class="conta-row">
-            <div class="conta-nome">${l.descricao}${l.conta_fixa_id ? '<span class="pill">fixa</span>' : ''}${l.retroativo ? '<span class="pill retro">retroativa</span>' : ''}
+            <div class="conta-nome">${esc(l.descricao)}${l.conta_fixa_id ? '<span class="pill">fixa</span>' : ''}${l.retroativo ? '<span class="pill retro">retroativa</span>' : ''}
               ${dataInfo(l)}
             </div>
             <div class="conta-actions">
@@ -1743,7 +1785,7 @@ function renderEntradas() {
   }
   document.getElementById('lista-entradas').innerHTML = entradas.map(l => `
     <div class="conta-row">
-      <div class="conta-nome">${l.descricao}${l.retroativo ? '<span class="pill retro">retroativa</span>' : ''}
+      <div class="conta-nome">${esc(l.descricao)}${l.retroativo ? '<span class="pill retro">retroativa</span>' : ''}
         ${dataInfo(l)}
       </div>
       <div class="conta-actions">
@@ -1772,7 +1814,7 @@ function renderAjustes() {
   const selCf = document.getElementById('cf-categoria');
   if (selCf && !selCf.options.length) {
     selCf.innerHTML = categorias.filter(c => c.tipo === 'saida')
-      .map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+      .map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
   }
 
   document.getElementById('meta-aporte').value = Number(metas.meta_investir_mensal || 0);
@@ -1784,7 +1826,7 @@ function renderAjustes() {
     return;
   }
   const optsCategoria = (selecionada) => categorias.filter(c => c.tipo === 'saida')
-    .map(c => `<option value="${c.id}" ${c.id === selecionada ? 'selected' : ''}>${c.nome}</option>`).join('');
+    .map(c => `<option value="${c.id}" ${c.id === selecionada ? 'selected' : ''}>${esc(c.nome)}</option>`).join('');
 
   el.innerHTML = `
     <div class="ajuste-row ajuste-head">
@@ -1792,7 +1834,7 @@ function renderAjustes() {
     </div>
     ${contasFixasTodas.map(cf => `
       <div class="ajuste-row ${cf.ativo ? '' : 'inativa'}">
-        <input type="text" value="${cf.nome}" onchange="salvarContaFixa(${cf.id}, 'nome', this.value)">
+        <input type="text" value="${esc(cf.nome)}" onchange="salvarContaFixa(${cf.id}, 'nome', this.value)">
         <select onchange="salvarContaFixa(${cf.id}, 'categoria_id', this.value)">${optsCategoria(cf.categoria_id)}</select>
         <input type="number" step="0.01" value="${Number(cf.valor_esperado)}" onchange="salvarContaFixa(${cf.id}, 'valor_esperado', this.value)">
         <input type="number" min="1" max="31" value="${cf.dia_vencimento || ''}" onchange="salvarContaFixa(${cf.id}, 'dia_vencimento', this.value)">
@@ -1806,15 +1848,20 @@ async function salvarContaFixa(id, campo, valor) {
   const patch = {};
   if (campo === 'valor_esperado') patch[campo] = parseFloat(valor) || 0;
   else if (campo === 'categoria_id') patch[campo] = parseInt(valor);
-  else if (campo === 'dia_vencimento') patch[campo] = valor ? parseInt(valor) : null;
-  else patch[campo] = valor;
-  await sb.from('fin_contas_fixas').update(patch).eq('id', id);
+  else if (campo === 'dia_vencimento') {
+    const dia = valor ? parseInt(valor) : null;
+    patch[campo] = dia && dia >= 1 && dia <= 31 ? dia : null; // fora de 1–31 vira "sem dia"
+  } else {
+    patch[campo] = String(valor).trim();
+    if (!patch[campo]) { await carregarDadosBase(); return; } // nome vazio: desfaz, volta o que estava
+  }
+  gravou(await sb.from('fin_contas_fixas').update(patch).eq('id', id), 'salvar a conta fixa');
   await carregarDadosBase();
 }
 
 async function alternarContaFixa(id, ativoAtual) {
   if (ativoAtual && !confirm('Desativar esta conta fixa? Ela para de ser lançada nos próximos meses.')) return;
-  await sb.from('fin_contas_fixas').update({ ativo: !ativoAtual }).eq('id', id);
+  gravou(await sb.from('fin_contas_fixas').update({ ativo: !ativoAtual }).eq('id', id), 'alterar a conta fixa');
   await carregarDadosBase();
 }
 
@@ -1824,16 +1871,17 @@ function novaContaFixa(ev) {
   const valor_esperado = parseFloat(document.getElementById('cf-valor').value);
   const categoria_id = parseInt(document.getElementById('cf-categoria').value);
   const diaRaw = document.getElementById('cf-dia').value;
-  const dia_vencimento = diaRaw ? parseInt(diaRaw) : null;
+  const diaNum = diaRaw ? parseInt(diaRaw) : null;
+  const dia_vencimento = diaNum && diaNum >= 1 && diaNum <= 31 ? diaNum : null;
   if (!nome || isNaN(valor_esperado)) return false;
-  (async () => {
-    await sb.from('fin_contas_fixas').insert([{ nome, valor_esperado, categoria_id, dia_vencimento, ativo: true }]);
+  umEnvioPorVez('conta-fixa', async () => {
+    if (!gravou(await sb.from('fin_contas_fixas').insert([{ nome, valor_esperado, categoria_id, dia_vencimento, ativo: true }]), 'criar a conta fixa')) return;
     document.getElementById('cf-nome').value = '';
     document.getElementById('cf-valor').value = '';
     document.getElementById('cf-dia').value = '';
     document.getElementById('form-conta-fixa').classList.remove('open');
     await carregarDadosBase();
-  })();
+  });
   return false;
 }
 
@@ -1843,15 +1891,15 @@ function salvarMetas(ev) {
   const meta_reserva_total = parseFloat(document.getElementById('meta-total').value) || 0;
   const marcos = document.getElementById('meta-marcos').value
     .split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n) && n > 0).sort((a, b) => a - b);
-  (async () => {
-    await sb.from('fin_metas').update({
+  umEnvioPorVez('metas', async () => {
+    const ok = gravou(await sb.from('fin_metas').update({
       meta_investir_mensal, meta_reserva_total,
       marcos: marcos.length ? marcos : null,
-    }).eq('id', metas.id);
+    }).eq('id', metas.id), 'salvar as metas');
     await carregarDadosBase();
     await carregarMes();
-    alert('Metas salvas.');
-  })();
+    if (ok) alert('Metas salvas.');
+  });
   return false;
 }
 
@@ -1909,8 +1957,8 @@ function renderInvestimentos() {
         <div class="investimento-header">
           <div class="investimento-icone" style="background:${meta.chip}">${svgIcone(meta.icone)}</div>
           <div class="investimento-info">
-            <div class="investimento-nome">${inv.nome}</div>
-            <div class="investimento-tipo muted">${inv.tipo} · aportado ${fmtBRL(aportado)}</div>
+            <div class="investimento-nome">${esc(inv.nome)}</div>
+            <div class="investimento-tipo muted">${esc(inv.tipo)} · aportado ${fmtBRL(aportado)}</div>
           </div>
           <div class="investimento-rentab">
             <span class="valor-atual">${fmtBRL(atual)}</span>
@@ -1935,9 +1983,11 @@ function novoInvestimento(ev) {
   const valor_atual = parseFloat(document.getElementById('inv-atual').value);
   const data_aporte = document.getElementById('inv-data').value || null;
   if (!nome || isNaN(valor_aportado) || isNaN(valor_atual)) return false;
-  (async () => {
-    const { data: criado } = await sb.from('fin_investimentos')
+  umEnvioPorVez('investimento', async () => {
+    const res = await sb.from('fin_investimentos')
       .insert([{ nome, tipo, valor_aportado, valor_atual, data_aporte }]).select();
+    if (!gravou(res, 'cadastrar o investimento')) return;
+    const criado = res.data;
     if (criado && criado[0]) await registrarValorInvestimento(criado[0].id, valor_atual, data_aporte);
     document.getElementById('inv-nome').value = '';
     document.getElementById('inv-aportado').value = '';
@@ -1945,29 +1995,30 @@ function novoInvestimento(ev) {
     document.getElementById('inv-data').value = '';
     document.getElementById('form-investimento').classList.remove('open');
     await carregarDadosBase();
-  })();
+  });
   return false;
 }
 
 async function atualizarValorInvestimento(id, novoValor) {
   const valor = parseFloat(novoValor);
   if (isNaN(valor)) return;
-  await sb.from('fin_investimentos').update({ valor_atual: valor }).eq('id', id);
-  await registrarValorInvestimento(id, valor);
+  if (gravou(await sb.from('fin_investimentos').update({ valor_atual: valor }).eq('id', id), 'atualizar o valor')) {
+    await registrarValorInvestimento(id, valor);
+  }
   await carregarDadosBase();
 }
 
 // grava o valor do investimento numa data — é o que dá curva real de patrimônio no gráfico.
 // um registro por investimento por dia: regravar no mesmo dia substitui em vez de empilhar.
 async function registrarValorInvestimento(investimentoId, valor, data) {
-  const dia = data || new Date().toISOString().slice(0, 10);
-  await sb.from('fin_investimentos_hist').delete().eq('investimento_id', investimentoId).eq('data', dia);
-  await sb.from('fin_investimentos_hist').insert([{ investimento_id: investimentoId, valor, data: dia }]);
+  const dia = data || hojeISO();
+  gravou(await sb.from('fin_investimentos_hist').delete().eq('investimento_id', investimentoId).eq('data', dia), 'atualizar o histórico do investimento');
+  gravou(await sb.from('fin_investimentos_hist').insert([{ investimento_id: investimentoId, valor, data: dia }]), 'registrar o histórico do investimento');
 }
 
 async function excluirInvestimento(id) {
   if (!confirm('Excluir este investimento?')) return;
-  await sb.from('fin_investimentos').update({ ativo: false }).eq('id', id);
+  gravou(await sb.from('fin_investimentos').update({ ativo: false }).eq('id', id), 'excluir o investimento');
   await carregarDadosBase();
 }
 
@@ -1992,7 +2043,7 @@ function patrimonioNaData(dataStr) {
 // investimentos cadastrados, antes do primeiro registro deles a soma estaria incompleta e
 // desenharia um salto que nunca aconteceu.
 function seriePassado() {
-  const hojeStr = new Date().toISOString().slice(0, 10);
+  const hojeStr = hojeISO();
   const datasHist = investimentosHist.map(h => h.data).sort();
   const inicioValido = investimentos.length ? (datasHist[0] || hojeStr) : null;
 
@@ -2022,8 +2073,7 @@ function desenharProjecaoPatrimonio() {
   const hojeValor = patrimonioTotal();
 
   const futuro = Array.from({ length: meses + 1 }, (_, i) => {
-    const d = new Date(hoje.getFullYear(), hoje.getMonth() + i, hoje.getDate());
-    return { data: d.toISOString().slice(0, 10), valor: hojeValor + ritmoMensal * i };
+    return { data: fmtISO(somarMeses(hoje, i)), valor: hojeValor + ritmoMensal * i };
   });
 
   const margemEsq = 52, margemBaixo = 26, margemTopo = 20;
@@ -2115,7 +2165,7 @@ function renderDicas() {
   const saldo = entradaTotal - saidaTotal;
   const metaInvestir = Number(metas.meta_investir_mensal);
 
-  const catReserva = categorias.find(c => c.nome.toLowerCase().includes('reserva'));
+  const catReserva = categorias.find(c => c.nome.toLowerCase().includes('reserva') && c.tipo === 'saida');
   const aporteEsteMes = saidas.filter(l => l.categoria_id === (catReserva && catReserva.id));
   const aportePago = aporteEsteMes.filter(l=>l.status==='pago').reduce((s,l)=>s+Number(l.valor),0);
 
@@ -2182,11 +2232,16 @@ function renderHistorico() {
   const entradaTotal = lancamentosMes.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+Number(l.valor),0);
   const saidaTotal = lancamentosMes.filter(l=>l.tipo==='saida').reduce((s,l)=>s+Number(l.valor),0);
   let serie = historico.map(h => ({ mes: h.mes_ref, entrada: Number(h.entrada), saida: Number(h.saida), saldo: Number(h.saldo) }));
+  // o mês aberto só entra (ou sobrescreve o importado) se tiver lançamentos de verdade — um mês
+  // vazio não pode zerar o histórico importado nem criar barra falsa de R$ 0.
+  const temLancamentos = lancamentosMes.length > 0;
   const jaExiste = serie.find(s => s.mes === mesRefAtual);
-  if (jaExiste) {
-    jaExiste.entrada = entradaTotal; jaExiste.saida = saidaTotal; jaExiste.saldo = entradaTotal - saidaTotal;
-  } else {
-    serie.push({ mes: mesRefAtual, entrada: entradaTotal, saida: saidaTotal, saldo: entradaTotal - saidaTotal });
+  if (temLancamentos) {
+    if (jaExiste) {
+      jaExiste.entrada = entradaTotal; jaExiste.saida = saidaTotal; jaExiste.saldo = entradaTotal - saidaTotal;
+    } else {
+      serie.push({ mes: mesRefAtual, entrada: entradaTotal, saida: saidaTotal, saldo: entradaTotal - saidaTotal });
+    }
   }
   serie.sort((a,b) => a.mes.localeCompare(b.mes));
 
