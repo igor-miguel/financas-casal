@@ -583,6 +583,7 @@ form.form-collapse { display: none; }
 @media (max-width: 900px) { .cz-resumo-grid { grid-template-columns: 1fr; } }
 .cz-bloco { position: relative; margin: 0 !important; }
 .cz-bloco h3 { padding-right: 32px; margin-bottom: 10px; }
+.cz-largo { grid-column: 1 / -1; }
 .cz-n { position: absolute; top: 16px; right: 16px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-wash); color: var(--accent); font-weight: 800; display: grid; place-items: center; font-size: .85rem; }
 .cz-duas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 520px) { .cz-duas { grid-template-columns: 1fr; } }
@@ -776,7 +777,9 @@ form.form-collapse { display: none; }
             <input type="number" step="0.01" id="cz-caixa" onchange="czSalvarCfg()"></div>
           <div><label>Entrada esperada da empresa/mês (R$) <span class="muted">— vazio = média recebida</span></label>
             <input type="number" step="100" id="cz-esperada" onchange="czSalvarCfg()"></div>
-          <div><label>Lucro que você quer por mês (R$)</label>
+          <div><label>Pró-labore fixo (R$/mês)</label>
+            <input type="number" step="500" id="cz-prolabore" onchange="czSalvarCfg()"></div>
+          <div><label>Lucro que fica na empresa por mês (R$)</label>
             <input type="number" step="500" id="cz-lucro" onchange="czSalvarCfg()"></div>
           <div><label>Ticket médio da venda (R$)</label>
             <input type="number" step="500" id="cz-ticket" onchange="czSalvarCfg()"></div>
@@ -2580,55 +2583,64 @@ document.querySelectorAll('#view-toggle button').forEach(btn => {
   });
 });
 
-// Resumo em 4 respostas. Tudo por mês, em regime (média recebida x custo recorrente).
+// Resumo em respostas. Modelo: a empresa paga um PRÓ-LABORE FIXO e tudo que sobra fica nela.
 function czResumo(R) {
   const ticket = czN(czDados.meta.ticket_venda) || 8000;
   const parc = Math.max(1, parseInt(czDados.meta.parcelas_venda) || 4);
   const lucro = czN(czDados.meta.lucro_meta);
+  const prol = R.prolabore;
   const parcela = ticket / parc;
-  const faltaZero = Math.max(0, R.pe - R.esperada);
-  const alvoLucro = R.pe + lucro;
+  const zero = R.custoEmp + prol;                      // faturamento pra empresa pagar tudo e o pró-labore
+  const faltaZero = Math.max(0, zero - R.esperada);
+  const alvoLucro = zero + lucro;
   const faltaLucro = Math.max(0, alvoLucro - R.esperada);
-  const vendas = f => f / ticket;                       // vendas/mês em regime (a partir do mês `parc`)
+  const vendas = f => f / ticket;
   const txtVendas = f => {
     const n = vendas(f);
     if (n <= 0) return '<b>0</b> — já está acima';
     if (n < 1) return `<b>${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} venda/mês</b> (1 a cada ~${Math.ceil(1 / n)} meses)`;
     return `<b>${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} vendas/mês</b> (arredonde pra ${Math.ceil(n)})`;
   };
-  // rampa: cada venda fechada num mês entra em `parc` parcelas; o caixa só chega ao regime no mês `parc`
   const nLucro = Math.max(1, Math.ceil(vendas(faltaLucro)));
   const rampa = Array.from({ length: Math.min(parc, 6) }, (_, i) => `mês ${i + 1}: ${fmtBRL(nLucro * parcela * (i + 1))}`).join(' · ');
   const linha = (t, v, cls) => `<div class="cz-linha ${cls || ''}"><span>${t}</span><b>${v}</b></div>`;
   const cor = v => v >= 0 ? 'color:var(--good)' : 'color:var(--critical)';
+  const disponivel = prol + R.rendaPes;
+  const sobraPes = disponivel - R.custoVida;
+  const sobraEmp = R.esperada - R.custoEmp - prol;
   const caixa0 = czN(czDados.meta.caixa_atual);
-  const aberto = -R.mes0res;                                // quanto ainda falta pagar além do que vai entrar neste mês
+  const aberto = R.aberto.alug + R.aberto.outras - R.aberto.receber;   // falta pagar além do que vai entrar neste mês
   document.getElementById('cz-resumo').innerHTML = `
   <div class="cz-resumo-grid">
     <section class="card cz-bloco">
-      <div class="cz-n">1</div><h3>Pessoal x empresa (por mês)</h3>
-      <div class="cz-duas">
-        <div><div class="cz-sub emp">EMPRESA</div>${linha('Custa', fmtBRL(R.custoEmp))}${linha('Entra (média)', fmtBRL(R.esperada))}${linha('Sobra', `<span style="${cor(R.esperada - R.custoEmp)}">${czMoeda(R.esperada - R.custoEmp)}</span>`, 'tot')}</div>
-        <div><div class="cz-sub">PESSOAL</div>${linha('Custa', fmtBRL(R.custoVida))}${linha('Renda de fora', fmtBRL(R.rendaPes))}${linha('Precisa da empresa', fmtBRL(R.custoVida - R.rendaPes), 'tot')}</div>
-      </div>
-      <p class="cz-conc">A empresa sobra ${fmtBRL(R.esperada - R.custoEmp)} e a vida pede ${fmtBRL(R.custoVida - R.rendaPes)}: <b style="${cor(R.esperada - R.pe)}">${R.esperada - R.pe >= 0 ? 'sobram' : 'faltam'} ${fmtBRL(Math.abs(R.esperada - R.pe))} por mês</b>.</p>
+      <div class="cz-n">1</div><h3>Pessoal: o pró-labore fecha a vida?</h3>
+      ${linha('Pró-labore fixo', fmtBRL(prol))}${linha('Renda de fora', fmtBRL(R.rendaPes))}
+      ${linha('Custo de vida (fixas + dia a dia)', fmtBRL(R.custoVida))}
+      ${linha(sobraPes >= 0 ? 'Sobra no pessoal' : 'Falta no pessoal', `<span style="${cor(sobraPes)}">${fmtBRL(Math.abs(sobraPes))}</span>`, 'tot')}
+      <p class="cz-conc">${sobraPes >= 0 ? 'A vida cabe no pró-labore.' : `A vida custa mais que o pró-labore: é preciso <b>cortar ${fmtBRL(-sobraPes)} por mês</b> do custo pessoal pra caber em ${fmtBRL(prol)}.`}</p>
     </section>
     <section class="card cz-bloco">
-      <div class="cz-n">2</div><h3>Pra ficar zero a zero</h3>
-      ${linha('A empresa precisa faturar', fmtBRL(R.pe) + '/mês')}${linha('Hoje entra (média)', fmtBRL(R.esperada) + '/mês')}
-      ${linha('Falta por mês', `<span style="${cor(-faltaZero)}">${fmtBRL(faltaZero)}</span>`, 'tot')}
-      <p class="cz-conc">Fora isso, <b>este mês</b> ainda faltam <b style="${cor(-aberto)}">${fmtBRL(Math.max(0, aberto))}</b> pra quitar o que está pendente e atrasado (já descontando o que vai entrar)${caixa0 ? `; com o caixa de ${fmtBRL(caixa0)}, o saldo no fim do mês fica em <b style="${cor(caixa0 - aberto)}">${czMoeda(caixa0 - aberto)}</b>` : ''}.</p>
+      <div class="cz-n">2</div><h3>Empresa: zero a zero (tudo fica nela)</h3>
+      ${linha('Entra (média)', fmtBRL(R.esperada))}${linha('Custa (equipe, contador, ferramentas)', '− ' + fmtBRL(R.custoEmp))}${linha('Pró-labore', '− ' + fmtBRL(prol))}
+      ${linha('Resultado que fica na empresa', `<span style="${cor(sobraEmp)}">${czMoeda(sobraEmp)}</span>`, 'tot')}
+      <p class="cz-conc">Pra empatar a empresa precisa faturar <b>${fmtBRL(zero)}</b> por mês${faltaZero ? `: <b style="color:var(--critical)">faltam ${fmtBRL(faltaZero)}</b>` : ', e já está acima'}.</p>
     </section>
     <section class="card cz-bloco">
-      <div class="cz-n">3</div><h3>Pra lucrar ${fmtBRL(lucro)} por mês</h3>
-      ${linha('Zero a zero', fmtBRL(R.pe))}${linha('+ lucro desejado', fmtBRL(lucro))}
+      <div class="cz-n">3</div><h3>Pra ficar ${fmtBRL(lucro)} por mês no caixa da empresa</h3>
+      ${linha('Zero a zero', fmtBRL(zero))}${linha('+ lucro que fica', fmtBRL(lucro))}
       ${linha('Faturar por mês', fmtBRL(alvoLucro), 'tot')}${linha('Falta em relação a hoje', fmtBRL(faltaLucro))}
-      <p class="cz-conc">Lucro = o que sobra depois de pagar a empresa <b>e</b> a vida.</p>
     </section>
     <section class="card cz-bloco">
       <div class="cz-n">4</div><h3>Vendas necessárias (${fmtBRL(ticket)} em ${parc}x no Pix)</h3>
-      ${linha('Pra zerar', txtVendas(faltaZero))}${linha('Pra lucrar ' + fmtBRL(lucro), txtVendas(faltaLucro), 'tot')}
-      <p class="cz-conc">Cada venda entra em parcelas de <b>${fmtBRL(parcela)}</b> por ${parc} meses. Fechando ${nLucro} por mês, o caixa recebe ${rampa}. O valor cheio só chega no mês ${parc}: por isso fechar logo conta mais que fechar muito depois.</p>
+      ${linha('Pra zerar', txtVendas(faltaZero))}${linha('Pra ficar ' + fmtBRL(lucro) + '/mês', txtVendas(faltaLucro), 'tot')}
+      <p class="cz-conc">Cada venda entra em parcelas de <b>${fmtBRL(parcela)}</b> por ${parc} meses. Fechando ${nLucro} por mês, o caixa recebe ${rampa}. O valor cheio só chega no mês ${parc}: fechar logo conta mais.</p>
+    </section>
+    <section class="card cz-bloco cz-largo">
+      <h3>Este mês: o que ainda falta pagar</h3>
+      ${linha(`Aluguéis pendentes (${R.aberto.nAlug})`, fmtBRL(R.aberto.alug))}${linha(`Outras contas pendentes (${R.aberto.nOutras})`, fmtBRL(R.aberto.outras))}
+      ${linha('(−) A receber ainda neste mês', '− ' + fmtBRL(R.aberto.receber))}
+      ${linha('Falta no mês', `<span style="${cor(-aberto)}">${fmtBRL(Math.max(0, aberto))}</span>`, 'tot')}
+      <p class="cz-conc">${caixa0 ? `Com o caixa de ${fmtBRL(caixa0)}, o saldo no fim do mês fica em <b style="${cor(caixa0 - aberto)}">${czMoeda(caixa0 - aberto)}</b>. ` : 'Informe o caixa de hoje (campo acima) pra ver o saldo. '}Se algum item dessa soma já foi pago ou está repetido, dê baixa ou remova no Dashboard e o número cai.</p>
     </section>
   </div>`;
 }
@@ -2717,6 +2729,7 @@ async function carregarClareza() {
   document.getElementById('cz-caixa').value = czN(czDados.meta.caixa_atual) || '';
   document.getElementById('cz-esperada').value = czDados.meta.entrada_empresa_esperada ?? '';
   document.getElementById('cz-lucro').value = czN(czDados.meta.lucro_meta);
+  document.getElementById('cz-prolabore').value = czN(czDados.meta.prolabore);
   document.getElementById('cz-ticket').value = czN(czDados.meta.ticket_venda);
   document.getElementById('cz-parcelas').value = czDados.meta.parcelas_venda || 4;
   czCalcular();
@@ -2728,7 +2741,7 @@ async function czSalvarCfg() {
   const caixa = czN(document.getElementById('cz-caixa').value);
   const espRaw = document.getElementById('cz-esperada').value;
   const esperada = espRaw === '' ? null : czN(espRaw);
-  const extra = { lucro_meta: czN(document.getElementById('cz-lucro').value), ticket_venda: czN(document.getElementById('cz-ticket').value) || 8000, parcelas_venda: Math.max(1, parseInt(document.getElementById('cz-parcelas').value) || 4) };
+  const extra = { prolabore: czN(document.getElementById('cz-prolabore').value), lucro_meta: czN(document.getElementById('cz-lucro').value), ticket_venda: czN(document.getElementById('cz-ticket').value) || 8000, parcelas_venda: Math.max(1, parseInt(document.getElementById('cz-parcelas').value) || 4) };
   if (!gravou(await sb.from('fin_metas').update({ caixa_atual: caixa, entrada_empresa_esperada: esperada, ...extra }).eq('id', czDados.meta.id), 'salvar')) return;
   Object.assign(czDados.meta, { caixa_atual: caixa, entrada_empresa_esperada: esperada }, extra);
   czCalcular();
@@ -2755,6 +2768,7 @@ function czCalcular() {
   const mediaSaidaEmp = media(k => soma(sel(k, 'saida', 'empresa')));
   const esperada = czDados.meta.entrada_empresa_esperada != null ? czN(czDados.meta.entrada_empresa_esperada) : mediaEntEmp;
 
+  const prolabore = czN(czDados.meta.prolabore);
   const meses = [];
   let caixa = czN(czDados.meta.caixa_atual);
   for (let i = 0; i < CZ_MESES; i++) {
@@ -2777,8 +2791,10 @@ function czCalcular() {
       m.estVarPes = mediaVarPes; m.estVarEmp = mediaVarEmp;
       m.saiEmp += m.estFixEmp + m.estVarEmp; m.saiPes += m.estFixPes + m.estVarPes;
     }
-    m.resEmp = m.entEmp - m.saiEmp;
-    m.resPes = m.entPes - m.saiPes;
+    // pró-labore fixo: a empresa paga e o resto fica nela (mês corrente já está em andamento: não entra)
+    m.prol = atual ? 0 : prolabore;
+    m.resEmp = m.entEmp - m.saiEmp - m.prol;
+    m.resPes = m.entPes + m.prol - m.saiPes;
     m.repasse = Math.max(0, -m.resPes);          // quanto a empresa precisa mandar pra vida fechar
     m.res = m.resEmp + m.resPes;
     caixa += m.res;
@@ -2797,7 +2813,7 @@ function czCalcular() {
     `<tr class="cz-sec"><td colspan="${meses.length + 1}">Pessoal</td></tr>` +
     linha('Renda pessoal', m => m.entPes) + linha('Custo de vida', m => -m.saiPes) + linha('Resultado pessoal', m => m.resPes, { cor: 1, cls: 'cz-tot' }) +
     `<tr class="cz-sec"><td colspan="${meses.length + 1}">Vida toda</td></tr>` +
-    linha('Repasse necessário empresa → pessoal', m => m.repasse) +
+    linha('Pró-labore pago pela empresa', m => m.prol) +
     linha('Resultado do mês', m => m.res, { cor: 1 }) +
     linha('Caixa no fim do mês', m => m.caixa, { cor: 1, cls: 'cz-tot' });
   const estTotal = meses.reduce((s, m) => s + czN(m.estEnt) + czN(m.estFixEmp) + czN(m.estVarEmp) + czN(m.estFixPes) + czN(m.estVarPes), 0);
@@ -2836,15 +2852,16 @@ function czCalcular() {
   const rendaPes = media(k => soma(sel(k, 'entrada', 'pessoal')));
   const custoVida = fixPes + varPes;
   const custoEmpFinal = Math.max(custoEmp, fixEmp + mediaVarEmp);
-  const pe = custoEmpFinal + custoVida - rendaPes;
-  czResumo({ pe, esperada, custoEmp: custoEmpFinal, custoVida, rendaPes, mes0res: meses[0].res });
+  const pe = custoEmpFinal + prolabore;
+  const pend0 = (tipo) => ativos.filter(l => l.mes_ref <= keyAtual && l.tipo === tipo && l.status === 'pendente');
+  const sai0 = pend0('saida'), isAlug = l => /alugu/i.test(l.descricao || '');
+  const aberto = { alug: soma(sai0.filter(isAlug)), nAlug: sai0.filter(isAlug).length, outras: soma(sai0.filter(l => !isAlug(l))), nOutras: sai0.filter(l => !isAlug(l)).length, receber: soma(pend0('entrada').filter(l => l.mes_ref <= keyAtual)) };
+  czResumo({ pe, esperada, custoEmp: custoEmpFinal, custoVida, rendaPes, prolabore, aberto });
   const lin = (t, v, cls) => `<div class="cz-linha ${cls || ''}"><span>${t}</span><b>${v}</b></div>`;
   document.getElementById('cz-pe').innerHTML =
     lin('Custo da empresa por mês (equipe, contador, ferramentas)', fmtBRL(Math.max(custoEmp, fixEmp + mediaVarEmp))) +
-    lin('Contas fixas pessoais (aluguel, parcelas, assinaturas)', fmtBRL(fixPes)) +
-    lin('Gasto do dia a dia pessoal (média)', fmtBRL(varPes)) +
-    lin('(−) Renda pessoal de fora', '− ' + fmtBRL(rendaPes)) +
-    lin('Ponto de equilíbrio: a empresa precisa faturar', fmtBRL(pe) + ' / mês', 'tot') +
+    lin('Pró-labore fixo', fmtBRL(prolabore)) +
+    lin('Zero a zero: a empresa precisa faturar', fmtBRL(pe) + ' / mês', 'tot') +
     lin('Entrada da empresa esperada', fmtBRL(esperada)) +
     lin(esperada >= pe ? 'Folga por mês' : 'Falta por mês', `<span class="${esperada >= pe ? 'pos' : 'neg'}" style="${esperada >= pe ? 'color:var(--good)' : 'color:var(--critical)'}">${fmtBRL(Math.abs(esperada - pe))}</span>`, 'tot') +
     `<p class="muted" style="margin-top:10px;">Incluí a reserva financeira (aporte de ${fmtBRL(czDados.fixas.filter(cf => /aporte|reserva/i.test(cf.nome)).reduce((s, cf) => s + czN(cf.valor_esperado), 0))}) nas contas fixas: é a primeira que se pausa enquanto o caixa estiver apertado.</p>`;
