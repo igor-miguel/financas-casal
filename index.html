@@ -536,6 +536,31 @@ form.form-collapse { display: none; }
 }
 .btn-secondary { background: var(--field-bg) !important; color: var(--text-primary) !important; }
 .data-venc { color: var(--muted); font-size: .76rem; display: block; margin-top: 2px; }
+
+/* ---- aba Clareza (empresa x pessoal) ---- */
+.cz-cfg { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+.cz-cfg label { display: block; font-size: .78rem; font-weight: 700; margin-bottom: 5px; }
+.cz-cfg input { width: 100%; }
+@media (max-width: 700px) { .cz-cfg { grid-template-columns: 1fr; } }
+.cz-scroll { overflow-x: auto; margin-top: 10px; }
+.cz-tab { border-collapse: collapse; width: 100%; min-width: 640px; font-size: .88rem; font-variant-numeric: tabular-nums; }
+.cz-tab th, .cz-tab td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+.cz-tab th:first-child, .cz-tab td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface-1); }
+.cz-tab thead th { font-family: var(--font-mono); font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.cz-tab tr.cz-sec td { font-family: var(--font-mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); background: var(--accent-wash); }
+.cz-tab tr.cz-tot td { font-weight: 800; border-bottom: 2px solid var(--text-primary); }
+.cz-tab .neg { color: var(--critical); } .cz-tab .pos { color: var(--good); }
+.cz-tab .est { font-style: italic; color: var(--muted); }
+.cz-linha { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--grid); font-size: .9rem; overflow-wrap: anywhere; }
+.cz-linha b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cz-linha.tot { border-bottom: 2px solid var(--text-primary); font-weight: 800; }
+.cz-alerta { margin: 0 0 18px; padding: 16px 18px; border-radius: 14px; line-height: 1.5; }
+.cz-alerta.ruim { background: rgba(198,47,47,.08); border: 1px solid rgba(198,47,47,.4); }
+.cz-alerta.ok { background: var(--accent-wash); border: 1px solid rgba(0,142,67,.4); }
+.cz-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 900px) { .cz-cols { grid-template-columns: 1fr; } }
+.cz-tag { display: inline-block; font-family: var(--font-mono); font-size: .62rem; text-transform: uppercase; padding: 1px 6px; border-radius: 6px; margin-right: 6px; background: var(--field-bg); color: var(--text-secondary); }
+.cz-tag.emp { background: #e5eefb; color: #1f5fb0; }
 </style>
 </head>
 <body>
@@ -562,6 +587,7 @@ form.form-collapse { display: none; }
       </div>
       <div class="sidebar-nav">
         <button data-tab="dashboard" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>Dashboard</button>
+        <button data-tab="clareza"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18"/><path d="M6 20V10M12 20V4M18 20v-7"/><path d="M4 8l4-3 4 2 6-4"/></svg>Clareza</button>
         <button data-tab="investimentos"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M16 7h5v5"/></svg>Investimentos</button>
         <button data-tab="dicas"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0-3.4 10.9c.5.4.9 1 .9 1.7v.4h5v-.4c0-.7.3-1.3.9-1.7A6 6 0 0 0 12 3z"/><path d="M9.5 19h5M11 21.5h2"/></svg>Dicas</button>
         <button data-tab="historico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5.2l3.2 2"/></svg>Histórico</button>
@@ -643,6 +669,10 @@ form.form-collapse { display: none; }
             <select id="desp-categoria"></select>
           </div>
           <div>
+            <label>De quem é</label>
+            <select id="desp-escopo"><option value="pessoal" selected>Pessoal</option><option value="empresa" >Empresa</option></select>
+          </div>
+          <div>
             <label>Vencimento (opcional)</label>
             <input type="date" id="desp-vencimento">
           </div>
@@ -682,6 +712,10 @@ form.form-collapse { display: none; }
             <select id="ent-categoria"></select>
           </div>
           <div>
+            <label>De quem é</label>
+            <select id="ent-escopo"><option value="pessoal" >Pessoal</option><option value="empresa" selected>Empresa</option></select>
+          </div>
+          <div>
             <label>Status</label>
             <select id="ent-status">
               <option value="pago">Já recebido</option>
@@ -700,6 +734,34 @@ form.form-collapse { display: none; }
         <div id="lista-entradas" style="margin-top:10px;"></div>
       </section>
 
+    </div>
+
+    <div class="tab-panel" id="tab-clareza">
+      <section class="card">
+        <h2>Clareza financeira</h2>
+        <p class="muted">Empresa e pessoal separados, mês a mês. Mostra quando o caixa fica negativo e quanto falta pra evitar.</p>
+        <div class="cz-cfg">
+          <div><label>Caixa hoje (R$) <span class="muted">— soma das contas empresa + pessoal</span></label>
+            <input type="number" step="0.01" id="cz-caixa" onchange="czSalvarCfg()"></div>
+          <div><label>Entrada esperada da empresa por mês (R$) <span class="muted">— vazio = média recebida</span></label>
+            <input type="number" step="100" id="cz-esperada" onchange="czSalvarCfg()"></div>
+        </div>
+      </section>
+      <div class="tiles" id="cz-tiles"></div>
+      <div id="cz-alerta"></div>
+      <section class="card">
+        <h3>Projeção dos próximos 6 meses</h3>
+        <p class="muted" id="cz-proj-nota"></p>
+        <div class="cz-scroll"><table class="cz-tab" id="cz-tabela"></table></div>
+      </section>
+      <section class="card">
+        <h3>Ponto de equilíbrio da vida toda</h3>
+        <div id="cz-pe"></div>
+      </section>
+      <div class="cz-cols">
+        <section class="card"><h3>Em atraso e a receber</h3><div id="cz-receber"></div></section>
+        <section class="card"><h3>Maiores saídas do pior mês</h3><div id="cz-saidas"></div></section>
+      </div>
     </div>
 
     <div class="tab-panel" id="tab-investimentos">
@@ -877,6 +939,10 @@ form.form-collapse { display: none; }
       <div>
         <label>Categoria</label>
         <select id="edit-categoria"></select>
+      </div>
+      <div>
+        <label>De quem é</label>
+        <select id="edit-escopo"><option value="pessoal">Pessoal</option><option value="empresa">Empresa</option></select>
       </div>
       <div>
         <label>Vencimento</label>
@@ -1155,7 +1221,7 @@ async function carregarMes() {
   if (faltando.length) {
     const novos = faltando.map(cf => ({
       tipo: 'saida', categoria_id: cf.categoria_id, conta_fixa_id: cf.id,
-      descricao: cf.nome, valor: cf.valor_esperado, mes_ref: mesRef, status: 'pendente',
+      descricao: cf.nome, valor: cf.valor_esperado, mes_ref: mesRef, status: 'pendente', escopo: cf.escopo || 'pessoal',
       data_vencimento: cf.dia_vencimento ? dataDoVencimento(mes, cf.dia_vencimento) : null,
     }));
     await sb.from('fin_lancamentos').upsert(novos, { onConflict: 'mes_ref,conta_fixa_id', ignoreDuplicates: true });
@@ -1288,7 +1354,7 @@ function novaDespesaAvulsa(ev) {
   umEnvioPorVez('despesa', async () => {
     const dataPago = status === 'pago' ? hojeISO() : null;
     const ok = gravou(await sb.from('fin_lancamentos').insert([{
-      tipo: 'saida', categoria_id, descricao: desc, valor, data_vencimento, retroativo,
+      tipo: 'saida', escopo: document.getElementById('desp-escopo').value, categoria_id, descricao: desc, valor, data_vencimento, retroativo,
       mes_ref: fmtMesRef(mesAtual), status, data_pago: dataPago,
     }]), 'lançar a despesa');
     if (!ok) return; // mantém o que foi digitado
@@ -1316,7 +1382,7 @@ function novaEntrada(ev) {
   umEnvioPorVez('entrada', async () => {
     const dataPago = status === 'pago' ? hojeISO() : null;
     const ok = gravou(await sb.from('fin_lancamentos').insert([{
-      tipo: 'entrada', categoria_id, descricao: desc, valor, data_vencimento, retroativo,
+      tipo: 'entrada', escopo: document.getElementById('ent-escopo').value, categoria_id, descricao: desc, valor, data_vencimento, retroativo,
       mes_ref: fmtMesRef(mesAtual), status, data_pago: dataPago,
     }]), 'lançar a entrada');
     if (!ok) return;
@@ -1343,6 +1409,7 @@ function abrirEdicao(id) {
     .map(c => `<option value="${c.id}" ${c.id === l.categoria_id ? 'selected' : ''}>${esc(c.nome)}</option>`).join('');
   document.getElementById('edit-vencimento').value = l.data_vencimento || '';
   document.getElementById('edit-retroativo').checked = !!l.retroativo;
+  document.getElementById('edit-escopo').value = l.escopo || 'pessoal';
   const pagoWrap = document.getElementById('edit-pago-wrap');
   if (l.status === 'pago') {
     pagoWrap.style.display = 'block';
@@ -1367,6 +1434,7 @@ function salvarEdicao(ev) {
     categoria_id: parseInt(document.getElementById('edit-categoria').value),
     data_vencimento: document.getElementById('edit-vencimento').value || null,
     retroativo: document.getElementById('edit-retroativo').checked,
+    escopo: document.getElementById('edit-escopo').value,
   };
   if (document.getElementById('edit-pago-wrap').style.display !== 'none') {
     patch.data_pago = document.getElementById('edit-pago').value || null;
@@ -1374,6 +1442,9 @@ function salvarEdicao(ev) {
   if (!patch.descricao || isNaN(patch.valor) || isNaN(patch.categoria_id)) return false;
   umEnvioPorVez('edicao', async () => {
     if (!gravou(await sb.from('fin_lancamentos').update(patch).eq('id', id), 'salvar a edição')) return;
+    // conta fixa: os próximos meses seguem a classificação
+    const lOrig = lancamentosMes.find(x => x.id === id);
+    if (lOrig && lOrig.conta_fixa_id && lOrig.escopo !== patch.escopo) await sb.from('fin_contas_fixas').update({ escopo: patch.escopo }).eq('id', lOrig.conta_fixa_id);
     fecharModal();
     await carregarDadosBase();
     await carregarMes();
@@ -2471,8 +2542,191 @@ document.querySelectorAll('#view-toggle button').forEach(btn => {
   });
 });
 
+// ---------- CLAREZA: empresa x pessoal, fluxo projetado ----------
+// Cada lançamento e conta fixa tem escopo 'empresa' ou 'pessoal'. A projeção olha o mês corrente + 5:
+//  - mês corrente: caixa de hoje já contém o que foi pago; só entra o PENDENTE (a receber - a pagar);
+//  - meses futuros: lançado + estimativas rotuladas (entrada esperada da empresa, contas fixas ainda
+//    não geradas, gasto do dia a dia pessoal pela média dos meses fechados).
+const CZ_MESES = 6;
+let czDados = null;
+
+function czMesKey(d) { return fmtMesRef(primeiroDiaMes(d)); }
+function czMesCurto(key) {
+  const d = new Date(key + 'T00:00:00');
+  return d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.', '');
+}
+function czN(v) { return Number(v) || 0; }
+function czCls(v) { return v < 0 ? 'neg' : 'pos'; }
+function czMoeda(v) { return (v < 0 ? '− ' : '') + fmtBRL(Math.abs(v)); }
+
+async function carregarClareza() {
+  const hoje = new Date();
+  const ini = czMesKey(somarMeses(primeiroDiaMes(hoje), -3));
+  const fim = czMesKey(somarMeses(primeiroDiaMes(hoje), CZ_MESES - 1));
+  const [rl, rm, rf] = await Promise.all([
+    sb.from('fin_lancamentos').select('*').gte('mes_ref', ini).lte('mes_ref', fim),
+    sb.from('fin_metas').select('*').limit(1),
+    sb.from('fin_contas_fixas').select('*').eq('ativo', true),
+  ]);
+  if (rl.error || rm.error || rf.error) {
+    document.getElementById('cz-alerta').innerHTML = `<div class="cz-alerta ruim">Não consegui carregar: ${esc((rl.error || rm.error || rf.error).message)}</div>`;
+    return;
+  }
+  czDados = { lancs: rl.data || [], meta: (rm.data || [])[0] || {}, fixas: rf.data || [] };
+  document.getElementById('cz-caixa').value = czN(czDados.meta.caixa_atual) || '';
+  document.getElementById('cz-esperada').value = czDados.meta.entrada_empresa_esperada ?? '';
+  czCalcular();
+}
+
+async function czSalvarCfg() {
+  if (!czDados || !czDados.meta.id) return;
+  const caixa = czN(document.getElementById('cz-caixa').value);
+  const espRaw = document.getElementById('cz-esperada').value;
+  const esperada = espRaw === '' ? null : czN(espRaw);
+  if (!gravou(await sb.from('fin_metas').update({ caixa_atual: caixa, entrada_empresa_esperada: esperada }).eq('id', czDados.meta.id), 'salvar')) return;
+  czDados.meta.caixa_atual = caixa; czDados.meta.entrada_empresa_esperada = esperada;
+  czCalcular();
+}
+
+function czCalcular() {
+  const hoje = new Date(), hojeStr = hojeISO();
+  const keyAtual = czMesKey(hoje);
+  const ativos = czDados.lancs.filter(l => l.status !== 'removido');
+  const soma = (arr) => arr.reduce((s, l) => s + czN(l.valor), 0);
+  const sel = (mes, tipo, esc_, f) => ativos.filter(l => l.mes_ref === mes && l.tipo === tipo && l.escopo === esc_ && (!f || f(l)));
+
+  // médias dos meses FECHADOS que têm dado (até 3)
+  const passados = [-1, -2, -3].map(n => czMesKey(somarMeses(primeiroDiaMes(hoje), n))).filter(k => ativos.some(l => l.mes_ref === k));
+  const media = (fn) => passados.length ? passados.reduce((s, k) => s + fn(k), 0) / passados.length : 0;
+  const mediaEntEmp = media(k => soma(sel(k, 'entrada', 'empresa', l => l.status === 'pago')));
+  // "dia a dia" = avulso que não é conta fixa disfarçada (aluguel/carro/parcela lançados à mão não contam)
+  const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const primeira = s => norm(s).split(/[\s(]+/)[0];
+  const fixaPal = new Set(czDados.fixas.map(cf => primeira(cf.nome)).filter(w => w.length >= 4));
+  const diaADia = l => !l.conta_fixa_id && !fixaPal.has(primeira(l.descricao)) && czN(l.valor) <= 1500;
+  const mediaVarPes = media(k => soma(sel(k, 'saida', 'pessoal', diaADia)));
+  const mediaVarEmp = media(k => soma(sel(k, 'saida', 'empresa', l => !l.conta_fixa_id)));
+  const mediaSaidaEmp = media(k => soma(sel(k, 'saida', 'empresa')));
+  const esperada = czDados.meta.entrada_empresa_esperada != null ? czN(czDados.meta.entrada_empresa_esperada) : mediaEntEmp;
+
+  const meses = [];
+  let caixa = czN(czDados.meta.caixa_atual);
+  for (let i = 0; i < CZ_MESES; i++) {
+    const key = czMesKey(somarMeses(primeiroDiaMes(hoje), i));
+    const atual = i === 0;
+    const m = { key, atual, est: [] };
+    const base = (tipo, e) => atual ? sel(key, tipo, e, l => l.status !== 'pago') : sel(key, tipo, e);
+    m.entEmp = soma(base('entrada', 'empresa'));
+    m.entPes = soma(base('entrada', 'pessoal'));
+    m.saiEmp = soma(base('saida', 'empresa'));
+    m.saiPes = soma(base('saida', 'pessoal'));
+    if (!atual) {
+      if (m.entEmp < esperada) { m.estEnt = esperada - m.entEmp; m.entEmp = esperada; }
+      // contas fixas ativas ainda não geradas neste mês (inclui as removidas: removido = decisão do usuário)
+      const geradas = new Set(czDados.lancs.filter(l => l.mes_ref === key && l.conta_fixa_id).map(l => l.conta_fixa_id));
+      const faltando = czDados.fixas.filter(cf => !geradas.has(cf.id));
+      m.estFixEmp = faltando.filter(cf => cf.escopo === 'empresa').reduce((s, cf) => s + czN(cf.valor_esperado), 0);
+      m.estFixPes = faltando.filter(cf => cf.escopo !== 'empresa').reduce((s, cf) => s + czN(cf.valor_esperado), 0);
+      m.estVarPes = mediaVarPes; m.estVarEmp = mediaVarEmp;
+      m.saiEmp += m.estFixEmp + m.estVarEmp; m.saiPes += m.estFixPes + m.estVarPes;
+    }
+    m.resEmp = m.entEmp - m.saiEmp;
+    m.resPes = m.entPes - m.saiPes;
+    m.repasse = Math.max(0, -m.resPes);          // quanto a empresa precisa mandar pra vida fechar
+    m.res = m.resEmp + m.resPes;
+    caixa += m.res;
+    m.caixa = caixa;
+    meses.push(m);
+  }
+
+  // ---- tabela
+  const linha = (rot, fn, opts = {}) => `<tr class="${opts.cls || ''}"><td>${rot}</td>${meses.map(m => {
+    const v = fn(m); const c = opts.cor ? czCls(v) : '';
+    return `<td class="${c}">${opts.bruto ? v : czMoeda(v)}</td>`; }).join('')}</tr>`;
+  document.getElementById('cz-tabela').innerHTML =
+    `<thead><tr><th></th>${meses.map(m => `<th>${czMesCurto(m.key)}${m.atual ? ' · resta' : ''}</th>`).join('')}</tr></thead><tbody>` +
+    `<tr class="cz-sec"><td colspan="${meses.length + 1}">Empresa</td></tr>` +
+    linha('Entradas', m => m.entEmp) + linha('Saídas', m => -m.saiEmp) + linha('Resultado da empresa', m => m.resEmp, { cor: 1, cls: 'cz-tot' }) +
+    `<tr class="cz-sec"><td colspan="${meses.length + 1}">Pessoal</td></tr>` +
+    linha('Renda pessoal', m => m.entPes) + linha('Custo de vida', m => -m.saiPes) + linha('Resultado pessoal', m => m.resPes, { cor: 1, cls: 'cz-tot' }) +
+    `<tr class="cz-sec"><td colspan="${meses.length + 1}">Vida toda</td></tr>` +
+    linha('Repasse necessário empresa → pessoal', m => m.repasse) +
+    linha('Resultado do mês', m => m.res, { cor: 1 }) +
+    linha('Caixa no fim do mês', m => m.caixa, { cor: 1, cls: 'cz-tot' });
+  const estTotal = meses.reduce((s, m) => s + czN(m.estEnt) + czN(m.estFixEmp) + czN(m.estVarEmp) + czN(m.estFixPes) + czN(m.estVarPes), 0);
+  document.getElementById('cz-proj-nota').textContent =
+    `Mês corrente = só o que ainda falta pagar/receber (o caixa de hoje já tem o resto). Meses futuros incluem estimativas: entrada da empresa ${fmtBRL(esperada)}/mês, contas fixas ainda não lançadas, ${fmtBRL(mediaVarEmp)}/mês de pagamentos avulsos da empresa (equipe, ferramentas) e ${fmtBRL(mediaVarPes)}/mês de gasto do dia a dia pessoal (média de ${passados.length} mês(es) fechado(s)).`;
+
+  // ---- tiles + alerta
+  const primeiroNeg = meses.find(m => m.caixa < 0);
+  const piorMes = meses.reduce((p, m) => (m.res < p.res ? m : p), meses[0]);
+  const menorCaixa = meses.reduce((p, m) => (m.caixa < p.caixa ? m : p), meses[0]);
+  const mesAtual0 = meses[0];
+  const tile = (rot, val, sub, cls) => `<div class="tile"><div class="label">${rot}</div><div class="value ${cls || ''}">${val}</div><div class="sub">${sub}</div></div>`;
+  document.getElementById('cz-tiles').innerHTML =
+    tile('Caixa hoje', fmtBRL(czDados.meta.caixa_atual), 'o que existe agora nas contas', '') +
+    tile('Fechamento do mês', czMoeda(mesAtual0.caixa - czN(czDados.meta.caixa_atual)), 'resultado do que falta pagar e receber', czCls(mesAtual0.res)) +
+    tile('Menor caixa projetado', czMoeda(menorCaixa.caixa), 'em ' + czMesCurto(menorCaixa.key), czCls(menorCaixa.caixa)) +
+    tile('Empresa cobre a vida?', mesAtual0.resEmp >= mesAtual0.repasse ? 'Sim' : 'Não', 'repasse necessário ' + fmtBRL(mesAtual0.repasse) + ' · empresa sobra ' + czMoeda(mesAtual0.resEmp), mesAtual0.resEmp >= mesAtual0.repasse ? 'good' : 'bad');
+  const semCaixa = !czN(czDados.meta.caixa_atual);
+  const mesesNeg = meses.filter(m => m.res < 0);
+  let al = '';
+  if (semCaixa) al += `<div class="cz-alerta ruim"><b>Informe o caixa de hoje</b> (campo acima) pra a projeção mostrar o saldo real de cada mês. Sem isso o caixa começa em zero.</div>`;
+  if (primeiroNeg) {
+    al += `<div class="cz-alerta ruim"><b>O caixa fica negativo em ${czMesCurto(primeiroNeg.key)}</b> (${czMoeda(primeiroNeg.caixa)}). Pra não passar disso é preciso gerar <b>${fmtBRL(-menorCaixa.caixa)}</b> a mais ou cortar o mesmo valor até ${czMesCurto(menorCaixa.key)}${menorCaixa.key !== primeiroNeg.key ? '' : ''}. Em média: <b>${fmtBRL(-menorCaixa.caixa / Math.max(1, meses.indexOf(menorCaixa) + 1))}</b> por mês.</div>`;
+  } else if (mesesNeg.length) {
+    al += `<div class="cz-alerta ruim">O caixa não zera, mas ${mesesNeg.map(m => czMesCurto(m.key)).join(', ')} fecham com saída maior que entrada. Atenção ao ritmo.</div>`;
+  } else {
+    al += `<div class="cz-alerta ok">Nos próximos ${CZ_MESES} meses nenhum fecha negativo, com as estimativas atuais.</div>`;
+  }
+  document.getElementById('cz-alerta').innerHTML = al;
+
+  // ---- ponto de equilíbrio (vida toda): o que precisa entrar na empresa por mês
+  const varPes = mediaVarPes;
+  const fixPes = czDados.fixas.filter(cf => cf.escopo !== 'empresa').reduce((s, cf) => s + czN(cf.valor_esperado), 0);
+  const fixEmp = czDados.fixas.filter(cf => cf.escopo === 'empresa').reduce((s, cf) => s + czN(cf.valor_esperado), 0);
+  const custoEmp = Math.max(mediaSaidaEmp, fixEmp);
+  const rendaPes = media(k => soma(sel(k, 'entrada', 'pessoal')));
+  const custoVida = fixPes + varPes;
+  const pe = Math.max(custoEmp, fixEmp + mediaVarEmp) + custoVida - rendaPes;
+  const lin = (t, v, cls) => `<div class="cz-linha ${cls || ''}"><span>${t}</span><b>${v}</b></div>`;
+  document.getElementById('cz-pe').innerHTML =
+    lin('Custo da empresa por mês (equipe, contador, ferramentas)', fmtBRL(Math.max(custoEmp, fixEmp + mediaVarEmp))) +
+    lin('Contas fixas pessoais (aluguel, parcelas, assinaturas)', fmtBRL(fixPes)) +
+    lin('Gasto do dia a dia pessoal (média)', fmtBRL(varPes)) +
+    lin('(−) Renda pessoal de fora', '− ' + fmtBRL(rendaPes)) +
+    lin('Ponto de equilíbrio: a empresa precisa faturar', fmtBRL(pe) + ' / mês', 'tot') +
+    lin('Entrada da empresa esperada', fmtBRL(esperada)) +
+    lin(esperada >= pe ? 'Folga por mês' : 'Falta por mês', `<span class="${esperada >= pe ? 'pos' : 'neg'}" style="${esperada >= pe ? 'color:var(--good)' : 'color:var(--critical)'}">${fmtBRL(Math.abs(esperada - pe))}</span>`, 'tot') +
+    `<p class="muted" style="margin-top:10px;">Incluí a reserva financeira (aporte de ${fmtBRL(czDados.fixas.filter(cf => /aporte|reserva/i.test(cf.nome)).reduce((s, cf) => s + czN(cf.valor_esperado), 0))}) nas contas fixas: é a primeira que se pausa enquanto o caixa estiver apertado.</p>`;
+
+  // ---- atraso + a receber (pendentes)
+  const pendEnt = ativos.filter(l => l.tipo === 'entrada' && l.status === 'pendente' && l.mes_ref <= czMesKey(somarMeses(primeiroDiaMes(hoje), 1)))
+    .sort((a, b) => (a.data_vencimento || '9').localeCompare(b.data_vencimento || '9'));
+  const atrasoSai = ativos.filter(l => l.tipo === 'saida' && l.status === 'pendente' && l.mes_ref <= keyAtual && (!l.data_vencimento || l.data_vencimento < hojeStr))
+    .sort((a, b) => czN(b.valor) - czN(a.valor));
+  const tag = l => `<span class="cz-tag ${l.escopo === 'empresa' ? 'emp' : ''}">${l.escopo === 'empresa' ? 'emp' : 'pes'}</span>`;
+  const dt = l => l.data_vencimento ? fmtDataCurta(l.data_vencimento) : 's/ data';
+  document.getElementById('cz-receber').innerHTML =
+    `<div class="muted" style="margin-bottom:6px;">A receber (${fmtBRL(soma(pendEnt))}) — cobrar</div>` +
+    (pendEnt.map(l => lin(`${tag(l)}${esc(l.descricao)} · ${dt(l)}${l.data_vencimento && l.data_vencimento < hojeStr ? ' ⚠' : ''}`, fmtBRL(l.valor))).join('') || '<p class="muted">Nada pendente.</p>') +
+    `<div class="muted" style="margin:14px 0 6px;">Contas em atraso / sem data (${fmtBRL(soma(atrasoSai))})</div>` +
+    (atrasoSai.map(l => lin(`${tag(l)}${esc(l.descricao)} · ${dt(l)}`, fmtBRL(l.valor))).join('') || '<p class="muted">Nada em atraso.</p>');
+
+  // ---- maiores saídas do pior mês
+  const alvo = piorMes;
+  const saidasPior = ativos.filter(l => l.mes_ref === alvo.key && l.tipo === 'saida' && (!alvo.atual || l.status !== 'pago'));
+  const agrupa = {};
+  saidasPior.forEach(l => { const k = (l.descricao || '').replace(/\s*\(.*\)$/, '').trim() + '|' + l.escopo; agrupa[k] = (agrupa[k] || 0) + czN(l.valor); });
+  const top = Object.entries(agrupa).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  document.getElementById('cz-saidas').innerHTML =
+    `<div class="muted" style="margin-bottom:6px;">${czMesCurto(alvo.key)} · resultado ${czMoeda(alvo.res)}</div>` +
+    (top.map(([k, v]) => { const [nome, e] = k.split('|'); return lin(`<span class="cz-tag ${e === 'empresa' ? 'emp' : ''}">${e === 'empresa' ? 'emp' : 'pes'}</span>${esc(nome)}`, fmtBRL(v)); }).join('') || '<p class="muted">Sem lançamentos.</p>') +
+    `<p class="muted" style="margin-top:10px;">Pausar, renegociar ou adiar o que está nessa lista é o caminho mais rápido pra fechar o buraco.</p>`;
+}
+
 // ---------- NAVEGAÇÃO (sidebar) ----------
-const TITULO_TAB = { dashboard: 'Dashboard', investimentos: 'Investimentos', dicas: 'Dicas', historico: 'Histórico', ajustes: 'Ajustes' };
+const TITULO_TAB = { dashboard: 'Dashboard', clareza: 'Clareza financeira', investimentos: 'Investimentos', dicas: 'Dicas', historico: 'Histórico', ajustes: 'Ajustes' };
 document.querySelectorAll('.sidebar-nav button').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.sidebar-nav button').forEach(b => b.classList.remove('active'));
@@ -2481,7 +2735,8 @@ document.querySelectorAll('.sidebar-nav button').forEach(btn => {
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     document.getElementById('page-title').textContent = TITULO_TAB[btn.dataset.tab] || '';
     // investimentos e ajustes não são visões do mês: escondem o seletor de mês e os tiles mensais
-    const escondeMes = btn.dataset.tab === 'investimentos' || btn.dataset.tab === 'ajustes';
+    const escondeMes = ['investimentos', 'ajustes', 'clareza'].includes(btn.dataset.tab);
+    if (btn.dataset.tab === 'clareza') carregarClareza();
     if (btn.dataset.tab === 'investimentos') desenharProjecaoPatrimonio();
     if (btn.dataset.tab === 'historico') ['chart-eh', 'chart-saldo'].forEach(id => rolarAteOFim(document.getElementById(id)));
     document.getElementById('tiles').style.display = escondeMes ? 'none' : '';
