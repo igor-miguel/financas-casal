@@ -579,6 +579,19 @@ form.form-collapse { display: none; }
 .cz-imp.economiza { background: #e5eefb; color: #1f5fb0; }
 .cz-del { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 1.1rem; }
 .cz-del:hover { color: var(--critical); }
+.cz-resumo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+@media (max-width: 900px) { .cz-resumo-grid { grid-template-columns: 1fr; } }
+.cz-bloco { position: relative; margin: 0 !important; }
+.cz-bloco h3 { padding-right: 32px; margin-bottom: 10px; }
+.cz-n { position: absolute; top: 16px; right: 16px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-wash); color: var(--accent); font-weight: 800; display: grid; place-items: center; font-size: .85rem; }
+.cz-duas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 520px) { .cz-duas { grid-template-columns: 1fr; } }
+.cz-sub { font-family: var(--font-mono); font-size: .66rem; letter-spacing: .08em; color: var(--muted); margin-bottom: 2px; }
+.cz-sub.emp { color: #1f5fb0; }
+.cz-conc { margin: 12px 0 0; font-size: .86rem; line-height: 1.5; color: var(--text-secondary); }
+.cz-det { padding: 18px 20px; }
+.cz-det > summary { cursor: pointer; font-weight: 700; font-size: .92rem; }
+.cz-det[open] > summary { margin-bottom: 14px; }
 </style>
 </head>
 <body>
@@ -757,30 +770,36 @@ form.form-collapse { display: none; }
     <div class="tab-panel" id="tab-clareza">
       <section class="card">
         <h2>Clareza financeira</h2>
-        <p class="muted">Empresa e pessoal separados, mês a mês. Mostra quando o caixa fica negativo e quanto falta pra evitar.</p>
+        <p class="muted">Quatro respostas: empresa x pessoal, quanto falta pro zero a zero, quanto precisa pra lucrar e quantas vendas isso dá.</p>
         <div class="cz-cfg">
-          <div><label>Caixa hoje (R$) <span class="muted">— soma das contas empresa + pessoal</span></label>
+          <div><label>Caixa hoje (R$) <span class="muted">— empresa + pessoal</span></label>
             <input type="number" step="0.01" id="cz-caixa" onchange="czSalvarCfg()"></div>
-          <div><label>Entrada esperada da empresa por mês (R$) <span class="muted">— vazio = média recebida</span></label>
+          <div><label>Entrada esperada da empresa/mês (R$) <span class="muted">— vazio = média recebida</span></label>
             <input type="number" step="100" id="cz-esperada" onchange="czSalvarCfg()"></div>
+          <div><label>Lucro que você quer por mês (R$)</label>
+            <input type="number" step="500" id="cz-lucro" onchange="czSalvarCfg()"></div>
+          <div><label>Ticket médio da venda (R$)</label>
+            <input type="number" step="500" id="cz-ticket" onchange="czSalvarCfg()"></div>
+          <div><label>Parcelas no Pix (vezes)</label>
+            <input type="number" min="1" max="12" id="cz-parcelas" onchange="czSalvarCfg()"></div>
         </div>
       </section>
-      <div class="tiles" id="cz-tiles"></div>
-      <div id="cz-alerta"></div>
+      <div id="cz-resumo"></div>
       <section class="card"><h3>Plano de ação pra sair do negativo</h3><div id="cz-plano"></div></section>
-      <section class="card">
+      <details class="card cz-det">
+        <summary>Ver detalhes: projeção mês a mês, contas em atraso, maiores saídas</summary>
+        <div class="tiles" id="cz-tiles"></div>
+        <div id="cz-alerta"></div>
         <h3>Projeção dos próximos 6 meses</h3>
         <p class="muted" id="cz-proj-nota"></p>
         <div class="cz-scroll"><table class="cz-tab" id="cz-tabela"></table></div>
-      </section>
-      <section class="card">
-        <h3>Ponto de equilíbrio da vida toda</h3>
+        <h3 style="margin-top:22px;">Ponto de equilíbrio da vida toda</h3>
         <div id="cz-pe"></div>
-      </section>
-      <div class="cz-cols">
-        <section class="card"><h3>Em atraso e a receber</h3><div id="cz-receber"></div></section>
-        <section class="card"><h3>Maiores saídas do pior mês</h3><div id="cz-saidas"></div></section>
-      </div>
+        <div class="cz-cols" style="margin-top:22px;">
+          <div><h3>Em atraso e a receber</h3><div id="cz-receber"></div></div>
+          <div><h3>Maiores saídas do pior mês</h3><div id="cz-saidas"></div></div>
+        </div>
+      </details>
     </div>
 
     <div class="tab-panel" id="tab-investimentos">
@@ -2561,6 +2580,59 @@ document.querySelectorAll('#view-toggle button').forEach(btn => {
   });
 });
 
+// Resumo em 4 respostas. Tudo por mês, em regime (média recebida x custo recorrente).
+function czResumo(R) {
+  const ticket = czN(czDados.meta.ticket_venda) || 8000;
+  const parc = Math.max(1, parseInt(czDados.meta.parcelas_venda) || 4);
+  const lucro = czN(czDados.meta.lucro_meta);
+  const parcela = ticket / parc;
+  const faltaZero = Math.max(0, R.pe - R.esperada);
+  const alvoLucro = R.pe + lucro;
+  const faltaLucro = Math.max(0, alvoLucro - R.esperada);
+  const vendas = f => f / ticket;                       // vendas/mês em regime (a partir do mês `parc`)
+  const txtVendas = f => {
+    const n = vendas(f);
+    if (n <= 0) return '<b>0</b> — já está acima';
+    if (n < 1) return `<b>${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} venda/mês</b> (1 a cada ~${Math.ceil(1 / n)} meses)`;
+    return `<b>${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} vendas/mês</b> (arredonde pra ${Math.ceil(n)})`;
+  };
+  // rampa: cada venda fechada num mês entra em `parc` parcelas; o caixa só chega ao regime no mês `parc`
+  const nLucro = Math.max(1, Math.ceil(vendas(faltaLucro)));
+  const rampa = Array.from({ length: Math.min(parc, 6) }, (_, i) => `mês ${i + 1}: ${fmtBRL(nLucro * parcela * (i + 1))}`).join(' · ');
+  const linha = (t, v, cls) => `<div class="cz-linha ${cls || ''}"><span>${t}</span><b>${v}</b></div>`;
+  const cor = v => v >= 0 ? 'color:var(--good)' : 'color:var(--critical)';
+  const caixa0 = czN(czDados.meta.caixa_atual);
+  const aberto = -R.mes0res;                                // quanto ainda falta pagar além do que vai entrar neste mês
+  document.getElementById('cz-resumo').innerHTML = `
+  <div class="cz-resumo-grid">
+    <section class="card cz-bloco">
+      <div class="cz-n">1</div><h3>Pessoal x empresa (por mês)</h3>
+      <div class="cz-duas">
+        <div><div class="cz-sub emp">EMPRESA</div>${linha('Custa', fmtBRL(R.custoEmp))}${linha('Entra (média)', fmtBRL(R.esperada))}${linha('Sobra', `<span style="${cor(R.esperada - R.custoEmp)}">${czMoeda(R.esperada - R.custoEmp)}</span>`, 'tot')}</div>
+        <div><div class="cz-sub">PESSOAL</div>${linha('Custa', fmtBRL(R.custoVida))}${linha('Renda de fora', fmtBRL(R.rendaPes))}${linha('Precisa da empresa', fmtBRL(R.custoVida - R.rendaPes), 'tot')}</div>
+      </div>
+      <p class="cz-conc">A empresa sobra ${fmtBRL(R.esperada - R.custoEmp)} e a vida pede ${fmtBRL(R.custoVida - R.rendaPes)}: <b style="${cor(R.esperada - R.pe)}">${R.esperada - R.pe >= 0 ? 'sobram' : 'faltam'} ${fmtBRL(Math.abs(R.esperada - R.pe))} por mês</b>.</p>
+    </section>
+    <section class="card cz-bloco">
+      <div class="cz-n">2</div><h3>Pra ficar zero a zero</h3>
+      ${linha('A empresa precisa faturar', fmtBRL(R.pe) + '/mês')}${linha('Hoje entra (média)', fmtBRL(R.esperada) + '/mês')}
+      ${linha('Falta por mês', `<span style="${cor(-faltaZero)}">${fmtBRL(faltaZero)}</span>`, 'tot')}
+      <p class="cz-conc">Fora isso, <b>este mês</b> ainda faltam <b style="${cor(-aberto)}">${fmtBRL(Math.max(0, aberto))}</b> pra quitar o que está pendente e atrasado (já descontando o que vai entrar)${caixa0 ? `; com o caixa de ${fmtBRL(caixa0)}, o saldo no fim do mês fica em <b style="${cor(caixa0 - aberto)}">${czMoeda(caixa0 - aberto)}</b>` : ''}.</p>
+    </section>
+    <section class="card cz-bloco">
+      <div class="cz-n">3</div><h3>Pra lucrar ${fmtBRL(lucro)} por mês</h3>
+      ${linha('Zero a zero', fmtBRL(R.pe))}${linha('+ lucro desejado', fmtBRL(lucro))}
+      ${linha('Faturar por mês', fmtBRL(alvoLucro), 'tot')}${linha('Falta em relação a hoje', fmtBRL(faltaLucro))}
+      <p class="cz-conc">Lucro = o que sobra depois de pagar a empresa <b>e</b> a vida.</p>
+    </section>
+    <section class="card cz-bloco">
+      <div class="cz-n">4</div><h3>Vendas necessárias (${fmtBRL(ticket)} em ${parc}x no Pix)</h3>
+      ${linha('Pra zerar', txtVendas(faltaZero))}${linha('Pra lucrar ' + fmtBRL(lucro), txtVendas(faltaLucro), 'tot')}
+      <p class="cz-conc">Cada venda entra em parcelas de <b>${fmtBRL(parcela)}</b> por ${parc} meses. Fechando ${nLucro} por mês, o caixa recebe ${rampa}. O valor cheio só chega no mês ${parc}: por isso fechar logo conta mais que fechar muito depois.</p>
+    </section>
+  </div>`;
+}
+
 // ---------- Plano de ação (tabela fin_plano_acao) ----------
 let czPlano = [];
 async function czCarregarPlano() {
@@ -2644,6 +2716,9 @@ async function carregarClareza() {
   czDados = { lancs: rl.data || [], meta: (rm.data || [])[0] || {}, fixas: rf.data || [] };
   document.getElementById('cz-caixa').value = czN(czDados.meta.caixa_atual) || '';
   document.getElementById('cz-esperada').value = czDados.meta.entrada_empresa_esperada ?? '';
+  document.getElementById('cz-lucro').value = czN(czDados.meta.lucro_meta);
+  document.getElementById('cz-ticket').value = czN(czDados.meta.ticket_venda);
+  document.getElementById('cz-parcelas').value = czDados.meta.parcelas_venda || 4;
   czCalcular();
   czCarregarPlano();
 }
@@ -2653,8 +2728,9 @@ async function czSalvarCfg() {
   const caixa = czN(document.getElementById('cz-caixa').value);
   const espRaw = document.getElementById('cz-esperada').value;
   const esperada = espRaw === '' ? null : czN(espRaw);
-  if (!gravou(await sb.from('fin_metas').update({ caixa_atual: caixa, entrada_empresa_esperada: esperada }).eq('id', czDados.meta.id), 'salvar')) return;
-  czDados.meta.caixa_atual = caixa; czDados.meta.entrada_empresa_esperada = esperada;
+  const extra = { lucro_meta: czN(document.getElementById('cz-lucro').value), ticket_venda: czN(document.getElementById('cz-ticket').value) || 8000, parcelas_venda: Math.max(1, parseInt(document.getElementById('cz-parcelas').value) || 4) };
+  if (!gravou(await sb.from('fin_metas').update({ caixa_atual: caixa, entrada_empresa_esperada: esperada, ...extra }).eq('id', czDados.meta.id), 'salvar')) return;
+  Object.assign(czDados.meta, { caixa_atual: caixa, entrada_empresa_esperada: esperada }, extra);
   czCalcular();
 }
 
@@ -2759,7 +2835,9 @@ function czCalcular() {
   const custoEmp = Math.max(mediaSaidaEmp, fixEmp);
   const rendaPes = media(k => soma(sel(k, 'entrada', 'pessoal')));
   const custoVida = fixPes + varPes;
-  const pe = Math.max(custoEmp, fixEmp + mediaVarEmp) + custoVida - rendaPes;
+  const custoEmpFinal = Math.max(custoEmp, fixEmp + mediaVarEmp);
+  const pe = custoEmpFinal + custoVida - rendaPes;
+  czResumo({ pe, esperada, custoEmp: custoEmpFinal, custoVida, rendaPes, mes0res: meses[0].res });
   const lin = (t, v, cls) => `<div class="cz-linha ${cls || ''}"><span>${t}</span><b>${v}</b></div>`;
   document.getElementById('cz-pe').innerHTML =
     lin('Custo da empresa por mês (equipe, contador, ferramentas)', fmtBRL(Math.max(custoEmp, fixEmp + mediaVarEmp))) +
