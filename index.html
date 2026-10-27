@@ -743,6 +743,18 @@ form.form-grid input, form.form-grid select, .ajuste-row input, .ajuste-row sele
 /* conta Empresa: destaque azul no menu e no título (Pessoal segue verde) */
 body.escopo-empresa #page-title::after { content: 'conta da empresa'; margin-left: 12px; font-family: var(--font-mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .1em; padding: 4px 10px; border-radius: 999px; background: #e5eefb; color: #1f5fb0; vertical-align: middle; }
 body:not(.escopo-empresa) #page-title::after { content: ''; }
+
+.repasse-card { margin-bottom: 22px; border-left: 4px solid #2a78d6; }
+.repasse-card h2 { margin: 0 0 2px; }
+.repasse-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px 28px; margin: 14px 0 10px; align-items: center; }
+.repasse-grid .trow b { white-space: normal; text-align: right; }
+.repasse-grid .trow { border-bottom: 1px solid var(--grid); padding: 7px 0; }
+.repasse-meta { font-size: .86rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5; }
+.repasse-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.repasse-form > div { flex: 0 1 200px; }
+.repasse-form label { font-size: .78rem; color: var(--text-secondary); display: block; margin-bottom: 3px; }
+.repasse-form input[type=number] { width: 100%; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--borda-fina); background: var(--field-bg); font-size: .95rem; }
+.repasse-form .btn { width: auto; padding: 10px 18px; }
 </style>
 </head>
 <body>
@@ -794,6 +806,7 @@ body:not(.escopo-empresa) #page-title::after { content: ''; }
         </header>
 
         <div class="tiles" id="tiles"></div>
+        <div id="repasse-card" style="display:none"></div>
 
         <div class="tab-panel active" id="tab-dashboard">
 
@@ -1220,6 +1233,8 @@ const CATEGORIA_META = {
   'Outras despesas':            { icone: 'caixa',     chip: 'var(--muted)' },
   'Consultoria / Clientes':     { icone: 'maleta',    chip: 'var(--chip-1)' },
   'Outras entradas':            { icone: 'carteira',  chip: 'var(--chip-2)' },
+  'Repasse da empresa':         { icone: 'carteira',  chip: 'var(--chip-3)' },
+  'Repasse ao pessoal':         { icone: 'carteira',  chip: 'var(--chip-6)' },
 };
 function metaCategoria(nome) {
   return CATEGORIA_META[nome] || { icone: 'caixa', chip: 'var(--muted)' };
@@ -1248,6 +1263,8 @@ let lancamentosMesTodos = [];   // pessoal + empresa juntos (Histórico e totais
 // Qual "conta" o Dashboard mostra: 'pessoal' ou 'empresa'. Os lançamentos de cada uma têm escopo próprio.
 let escopoAtual = 'pessoal';
 const doEscopo = l => (l.escopo || 'pessoal') === escopoAtual;
+// repasse empresa → pessoal: movimento interno (sai de uma conta e entra na outra), não conta como receita nem gasto da vida toda
+const ehRepasse = l => { const c = categorias.find(x => x.id === l.categoria_id); return !!c && /^repasse/i.test(c.nome); };
 let lancamentosMesAnterior = [];
 let reservaAcumulada = 0;
 let periodoTipo = 'mensal';
@@ -1454,6 +1471,7 @@ async function carregarMes() {
 // o topo (tiles, contas a pagar/receber) e a parte de baixo nunca ficam em momentos diferentes.
 function renderMes() {
   renderTiles();
+  renderRepasse();
   renderAlertas();
   renderContas();
   renderEntradas();
@@ -2628,12 +2646,12 @@ function renderDicas() {
 function renderHistorico() {
   // combina histórico importado + mês corrente calculado ao vivo (se ainda não estiver no histórico)
   const mesRefAtual = fmtMesRef(mesAtual);
-  const entradaTotal = lancamentosMesTodos.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+Number(l.valor),0);
-  const saidaTotal = lancamentosMesTodos.filter(l=>l.tipo==='saida').reduce((s,l)=>s+Number(l.valor),0);
+  const entradaTotal = lancamentosMesTodos.filter(l => !ehRepasse(l)).filter(l=>l.tipo==='entrada').reduce((s,l)=>s+Number(l.valor),0);
+  const saidaTotal = lancamentosMesTodos.filter(l => !ehRepasse(l)).filter(l=>l.tipo==='saida').reduce((s,l)=>s+Number(l.valor),0);
   let serie = historico.map(h => ({ mes: h.mes_ref, entrada: Number(h.entrada), saida: Number(h.saida), saldo: Number(h.saldo) }));
   // o mês aberto só entra (ou sobrescreve o importado) se tiver lançamentos de verdade — um mês
   // vazio não pode zerar o histórico importado nem criar barra falsa de R$ 0.
-  const temLancamentos = lancamentosMesTodos.length > 0;
+  const temLancamentos = lancamentosMesTodos.filter(l => !ehRepasse(l)).length > 0;
   const jaExiste = serie.find(s => s.mes === mesRefAtual);
   if (temLancamentos) {
     if (jaExiste) {
@@ -2939,7 +2957,7 @@ async function carregarClareza() {
     document.getElementById('cz-alerta').innerHTML = `<div class="cz-alerta ruim">Não consegui carregar: ${esc((rl.error || rm.error || rf.error).message)}</div>`;
     return;
   }
-  czDados = { lancs: rl.data || [], meta: (rm.data || [])[0] || {}, fixas: rf.data || [] };
+  czDados = { lancs: (rl.data || []).filter(l => !ehRepasse(l)), meta: (rm.data || [])[0] || {}, fixas: rf.data || [] };
   document.getElementById('cz-caixa').value = czN(czDados.meta.caixa_atual) || '';
   document.getElementById('cz-esperada').value = czDados.meta.entrada_empresa_esperada ?? '';
   document.getElementById('cz-lucro').value = czN(czDados.meta.lucro_meta);
@@ -3126,6 +3144,61 @@ function aplicarEscopo() {
   if (t && document.querySelector('.sidebar-nav button.active')?.dataset.tab === 'dashboard') t.textContent = emp ? 'Empresa' : 'Pessoal';
 }
 
+// ---------- Repasse da empresa pro pessoal ----------
+// Hoje tudo que entra na empresa paga as contas dela e o resto vai pro pessoal, sem valor nem dia fixos.
+// O repasse vira um lançamento de verdade nos dois lados (saída na Empresa, entrada no Pessoal), pra cada conta
+// refletir o caixa real. Até o pró-labore ficar fixo (meta em Clareza), o valor é a sobra do mês.
+function renderRepasse() {
+  const el = document.getElementById('repasse-card'); if (!el) return;
+  const aba = document.querySelector('.sidebar-nav button.active');
+  if (!(aba && aba.dataset.tab === 'dashboard' && escopoAtual === 'empresa')) { el.style.display = 'none'; return; }
+  const rep = lancamentosMes.filter(ehRepasse), resto = lancamentosMes.filter(l => !ehRepasse(l));
+  const soma = a => a.reduce((s, l) => s + Number(l.valor), 0);
+  const entPrev = soma(resto.filter(l => l.tipo === 'entrada')), saiPrev = soma(resto.filter(l => l.tipo === 'saida'));
+  const sobra = entPrev - saiPrev;                                  // previsto do mês, antes do repasse
+  const sobraReal = soma(resto.filter(l => l.tipo === 'entrada' && l.status === 'pago')) - soma(resto.filter(l => l.tipo === 'saida' && l.status === 'pago'));
+  const repTot = soma(rep.filter(l => l.tipo === 'saida')), repPago = soma(rep.filter(l => l.tipo === 'saida' && l.status === 'pago'));
+  const falta = Math.max(0, sobra - repTot);
+  const prol = Number(metas.prolabore) || 15000;
+  const sugestao = Math.round(falta * 100) / 100;
+  el.style.display = '';
+  el.innerHTML = `
+  <section class="card repasse-card">
+    <div class="repasse-cab"><div><h2>Repasse pro pessoal</h2>
+      <p class="muted">Tudo que sobra da empresa vai pra sua conta pessoal. Lance aqui pra as duas contas baterem com o dinheiro real.</p></div></div>
+    <div class="repasse-grid">
+      <div class="trow"><span>Sobra da empresa neste mês (previsto)</span><b>${fmtBRL(sobra)}</b></div>
+      <div class="trow"><span>Sobra já em caixa (recebido − pago)</span><b>${fmtBRL(sobraReal)}</b></div>
+      <div class="trow"><span>Já lançado como repasse</span><b>${fmtBRL(repTot)}${repTot ? ` <small class="muted">(${fmtBRL(repPago)} pago)</small>` : ''}</b></div>
+      <div class="faltante ${falta <= 0.005 ? 'quitado' : 'neutro'}"><span>${falta <= 0.005 ? 'Tudo repassado' : 'Falta repassar'}</span><b>${fmtBRL(falta)}</b></div>
+    </div>
+    <div class="repasse-meta">Meta: pró-labore fixo de <b>${fmtBRL(prol)}</b> por mês. Este mês a sobra é <b>${fmtBRL(sobra)}</b> (${sobra >= prol ? 'dá pra tirar o pró-labore inteiro' : 'faltam ' + fmtBRL(prol - sobra) + ' pra chegar nos ' + fmtBRL(prol)}).</div>
+    <form class="repasse-form" onsubmit="return lancarRepasse(event)">
+      <div><label>Valor do repasse (R$)</label><input type="number" step="0.01" min="0" id="rep-valor" value="${sugestao || ''}" required></div>
+      <label class="checkbox-line"><input type="checkbox" id="rep-pago" checked> já transferi (dar baixa nos dois lados)</label>
+      <button type="submit" class="btn">Lançar repasse</button>
+      <button type="button" class="btn btn-secondary" onclick="document.getElementById('rep-valor').value = ${prol}">Usar ${fmtBRL(prol)} fixo</button>
+    </form>
+  </section>`;
+}
+function lancarRepasse(ev) {
+  ev.preventDefault();
+  const valor = parseFloat(document.getElementById('rep-valor').value);
+  const pago = document.getElementById('rep-pago').checked;
+  if (!valor || valor <= 0) return false;
+  const catSai = categorias.find(c => c.nome === 'Repasse ao pessoal'), catEnt = categorias.find(c => c.nome === 'Repasse da empresa');
+  if (!catSai || !catEnt) { alert('Categorias de repasse não encontradas.'); return false; }
+  umEnvioPorVez('repasse', async () => {
+    const base = { valor, mes_ref: fmtMesRef(mesAtual), status: pago ? 'pago' : 'pendente', data_pago: pago ? hojeISO() : null };
+    const ok = gravou(await sb.from('fin_lancamentos').insert([
+      { ...base, tipo: 'saida', categoria_id: catSai.id, descricao: 'Repasse para o pessoal', escopo: 'empresa' },
+      { ...base, tipo: 'entrada', categoria_id: catEnt.id, descricao: 'Repasse da empresa', escopo: 'pessoal' },
+    ]), 'lançar o repasse');
+    if (ok) await carregarMes();
+  });
+  return false;
+}
+
 // ---------- NAVEGAÇÃO (sidebar) ----------
 const TITULO_TAB = { dashboard: 'Pessoal', clareza: 'Clareza financeira', investimentos: 'Investimentos', dicas: 'Dicas', historico: 'Histórico', ajustes: 'Ajustes' };
 document.querySelectorAll('.sidebar-nav button').forEach(btn => {
@@ -3140,6 +3213,7 @@ document.querySelectorAll('.sidebar-nav button').forEach(btn => {
       if (novo !== escopoAtual) { escopoAtual = novo; aplicarEscopo(); carregarMes(); } else aplicarEscopo();
     }
     if (btn.dataset.tab !== 'dashboard') document.body.classList.remove('escopo-empresa');
+    renderRepasse();
     document.getElementById('page-title').textContent = btn.dataset.tab === 'dashboard' ? (escopoAtual === 'empresa' ? 'Empresa' : 'Pessoal') : (TITULO_TAB[btn.dataset.tab] || '');
     // investimentos e ajustes não são visões do mês: escondem o seletor de mês e os tiles mensais
     const escondeMes = ['investimentos', 'ajustes', 'clareza'].includes(btn.dataset.tab);
