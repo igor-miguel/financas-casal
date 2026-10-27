@@ -561,6 +561,24 @@ form.form-collapse { display: none; }
 @media (max-width: 900px) { .cz-cols { grid-template-columns: 1fr; } }
 .cz-tag { display: inline-block; font-family: var(--font-mono); font-size: .62rem; text-transform: uppercase; padding: 1px 6px; border-radius: 6px; margin-right: 6px; background: var(--field-bg); color: var(--text-secondary); }
 .cz-tag.emp { background: #e5eefb; color: #1f5fb0; }
+.cz-prog { margin-bottom: 16px; }
+.cz-prog-bar { height: 10px; border-radius: 99px; background: var(--grid); overflow: hidden; margin-bottom: 6px; }
+.cz-prog-bar i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+.cz-fase { margin-bottom: 18px; }
+.cz-fase-tit { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); padding-bottom: 6px; border-bottom: 1px solid var(--grid); margin-bottom: 4px; }
+.cz-item { display: flex; gap: 12px; align-items: flex-start; padding: 10px 4px; border-bottom: 1px solid var(--grid); cursor: pointer; }
+.cz-item input { margin-top: 4px; width: 18px; height: 18px; flex-shrink: 0; accent-color: var(--accent); }
+.cz-item-txt { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.cz-item-txt b { display: block; font-size: .92rem; }
+.cz-item-txt small { display: block; color: var(--text-secondary); font-size: .8rem; margin-top: 2px; line-height: 1.4; }
+.cz-item.feito .cz-item-txt b { text-decoration: line-through; color: var(--muted); }
+.cz-item.feito .cz-item-txt small { opacity: .6; }
+.cz-meta { font-family: var(--font-mono); font-size: .7rem !important; }
+.cz-meta .atras { color: var(--critical); font-style: normal; font-weight: 700; }
+.cz-imp { padding: 1px 7px; border-radius: 6px; background: var(--accent-wash); color: var(--accent); margin-left: 4px; }
+.cz-imp.economiza { background: #e5eefb; color: #1f5fb0; }
+.cz-del { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 1.1rem; }
+.cz-del:hover { color: var(--critical); }
 </style>
 </head>
 <body>
@@ -749,6 +767,7 @@ form.form-collapse { display: none; }
       </section>
       <div class="tiles" id="cz-tiles"></div>
       <div id="cz-alerta"></div>
+      <section class="card"><h3>Plano de ação pra sair do negativo</h3><div id="cz-plano"></div></section>
       <section class="card">
         <h3>Projeção dos próximos 6 meses</h3>
         <p class="muted" id="cz-proj-nota"></p>
@@ -2542,6 +2561,56 @@ document.querySelectorAll('#view-toggle button').forEach(btn => {
   });
 });
 
+// ---------- Plano de ação (tabela fin_plano_acao) ----------
+let czPlano = [];
+async function czCarregarPlano() {
+  const { data, error } = await sb.from('fin_plano_acao').select('*').order('ordem').order('id');
+  if (error) { document.getElementById('cz-plano').innerHTML = `<p class="muted">Não consegui carregar o plano: ${esc(error.message)}</p>`; return; }
+  czPlano = data || [];
+  czRenderPlano();
+}
+function czRenderPlano() {
+  const hojeStr = hojeISO();
+  const total = czPlano.length, feitos = czPlano.filter(p => p.feito).length;
+  const soma = (tipo, so) => czPlano.filter(p => p.tipo === tipo && (!so || p.feito)).reduce((s, p) => s + czN(p.impacto), 0);
+  const fases = [...new Set(czPlano.map(p => p.fase))];
+  const pct = total ? Math.round(feitos / total * 100) : 0;
+  let h = `<div class="cz-prog"><div class="cz-prog-bar"><i style="width:${pct}%"></i></div>
+    <div class="muted">${feitos} de ${total} passos feitos · já entrou/economizou <b>${fmtBRL(soma('entra', true) + soma('economiza', true))}</b> de <b>${fmtBRL(soma('entra') + soma('economiza'))}</b> previstos no plano</div></div>`;
+  fases.forEach(f => {
+    const itens = czPlano.filter(p => p.fase === f);
+    h += `<div class="cz-fase"><div class="cz-fase-tit">${esc(f)} <span>${itens.filter(p => p.feito).length}/${itens.length}</span></div>` +
+      itens.map(p => {
+        const atras = !p.feito && p.prazo && p.prazo < hojeStr;
+        const imp = czN(p.impacto) ? `<span class="cz-imp ${p.tipo}">${p.tipo === 'economiza' ? 'economiza' : 'entra'} ${fmtBRL(p.impacto)}${p.tipo === 'economiza' ? '/mês' : ''}</span>` : '';
+        return `<label class="cz-item ${p.feito ? 'feito' : ''}"><input type="checkbox" ${p.feito ? 'checked' : ''} onchange="czTogglePlano(${p.id}, this.checked)">
+          <span class="cz-item-txt"><b>${esc(p.titulo)}</b>${p.detalhe ? `<small>${esc(p.detalhe)}</small>` : ''}
+          <small class="cz-meta">${p.prazo ? (atras ? '<em class="atras">atrasado · </em>' : '') + 'até ' + fmtDataCurta(p.prazo) : ''} ${imp}</small></span>
+          <button type="button" class="cz-del" title="Remover" onclick="event.preventDefault(); czDelPlano(${p.id})">×</button></label>`;
+      }).join('') + `</div>`;
+  });
+  h += `<button type="button" class="add-toggle" onclick="czAddPlano()">+ Passo</button>`;
+  document.getElementById('cz-plano').innerHTML = h;
+}
+async function czTogglePlano(id, feito) {
+  const p = czPlano.find(x => x.id === id); if (!p) return;
+  p.feito = feito; czRenderPlano();
+  gravou(await sb.from('fin_plano_acao').update({ feito, feito_em: feito ? new Date().toISOString() : null }).eq('id', id), 'salvar o passo');
+}
+async function czAddPlano() {
+  const titulo = (prompt('Qual é o passo?') || '').trim(); if (!titulo) return;
+  const ordem = czPlano.length ? Math.max(...czPlano.map(p => p.ordem)) + 1 : 0;
+  const fase = czPlano.length ? czPlano[czPlano.length - 1].fase : 'Passos';
+  const { data, error } = await sb.from('fin_plano_acao').insert({ fase, ordem, titulo }).select().single();
+  if (!gravou({ error }, 'adicionar o passo')) return;
+  czPlano.push(data); czRenderPlano();
+}
+async function czDelPlano(id) {
+  const p = czPlano.find(x => x.id === id); if (!p || !confirm('Remover "' + p.titulo + '"?')) return;
+  if (!gravou(await sb.from('fin_plano_acao').delete().eq('id', id), 'remover o passo')) return;
+  czPlano = czPlano.filter(x => x.id !== id); czRenderPlano();
+}
+
 // ---------- CLAREZA: empresa x pessoal, fluxo projetado ----------
 // Cada lançamento e conta fixa tem escopo 'empresa' ou 'pessoal'. A projeção olha o mês corrente + 5:
 //  - mês corrente: caixa de hoje já contém o que foi pago; só entra o PENDENTE (a receber - a pagar);
@@ -2576,6 +2645,7 @@ async function carregarClareza() {
   document.getElementById('cz-caixa').value = czN(czDados.meta.caixa_atual) || '';
   document.getElementById('cz-esperada').value = czDados.meta.entrada_empresa_esperada ?? '';
   czCalcular();
+  czCarregarPlano();
 }
 
 async function czSalvarCfg() {
@@ -2615,7 +2685,8 @@ function czCalcular() {
     const key = czMesKey(somarMeses(primeiroDiaMes(hoje), i));
     const atual = i === 0;
     const m = { key, atual, est: [] };
-    const base = (tipo, e) => atual ? sel(key, tipo, e, l => l.status !== 'pago') : sel(key, tipo, e);
+    // mês corrente: tudo que ainda está pendente, inclusive de meses anteriores (atrasos)
+    const base = (tipo, e) => atual ? ativos.filter(l => l.mes_ref <= key && l.tipo === tipo && l.escopo === e && l.status !== 'pago') : sel(key, tipo, e);
     m.entEmp = soma(base('entrada', 'empresa'));
     m.entPes = soma(base('entrada', 'pessoal'));
     m.saiEmp = soma(base('saida', 'empresa'));
